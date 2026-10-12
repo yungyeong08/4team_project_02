@@ -29,7 +29,7 @@ public sealed class PixelCharacter : MonoBehaviour
             LoadCharacterSprite("Sprites/Player/MainCharacter/Player4", true),
             LoadCharacterSprite("Sprites/Player/MainCharacter/Player5", true),
             LoadCharacterSprite("Sprites/Player/MainCharacter/Player6", true));
-        fishingFrames = CreateSheetFrames(Resources.Load<Texture2D>("Sprites/Player/FishingDown"), 24f);
+        fishingFrames = CreateSheetFrames(Resources.Load<Texture2D>("Sprites/Player/FishingDown"), 48f);
 
         SetFrame(walkDown, 0);
     }
@@ -81,7 +81,7 @@ public sealed class PixelCharacter : MonoBehaviour
             texture,
             new Rect(0, 0, texture.width, texture.height),
             new Vector2(.5f, .1f),
-            32f);
+            48f);
     }
 
     private static Texture2D RemoveWhiteBackground(Texture2D source)

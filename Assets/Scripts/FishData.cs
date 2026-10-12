@@ -78,7 +78,12 @@ public static class FishCatalog
             new("atlantic_salmon", "대서양 연어", salmon, FishRarity.Uncommon, 450,
                 .22f, .28f, .36f, 1.15f, .15f, .27f, .18f),
             new("northern_pike", "노던 파이크", pike, FishRarity.Rare, 900,
-                .16f, .43f, .50f, .68f, .24f, .21f, .25f)
+                .16f, .43f, .50f, .68f, .24f, .21f, .25f),
+            // Temporary high-rarity entries reuse existing art until dedicated sprites arrive.
+            new("golden_salmon", "황금 연어", salmon, FishRarity.Epic, 1800,
+                .15f, .48f, .56f, .55f, .26f, .24f, .25f),
+            new("ancient_pike", "고대 파이크", pike, FishRarity.Legendary, 3200,
+                .12f, .60f, .68f, .42f, .34f, .20f, .30f)
         };
     }
 

@@ -1,0 +1,76 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 488ae741a1aeb6e4c88c1cf6dd7279dc, type: 3}
+  m_Name: FishingMapConfig
+  m_EditorClassIdentifier: Assembly-CSharp::FishingMapConfig
+  MapSize: {x: 44, y: 30}
+  PlayerStart: {x: 0, y: -10}
+  FishingShopPosition: {x: 3.2, y: -8}
+  FishMarketPosition: {x: -3.2, y: -8}
+  FishingSpots:
+  - Id: village_pond
+    DisplayName: "\uB9C8\uC744 \uC5F0\uBABB \xB7 \uCD08\uAE09"
+    WaterCenter: {x: -9, y: -8}
+    WaterSize: {x: 7, y: 5}
+    ShorePosition: {x: -5.15, y: -8}
+    BobberPosition: {x: -6.25, y: -8}
+    InteractionRange: 1.65
+    DifficultyMultiplier: 0.9
+    RarityWeights:
+    - Rarity: 0
+      Weight: 70
+    - Rarity: 1
+      Weight: 25
+    - Rarity: 2
+      Weight: 5
+    - Rarity: 3
+      Weight: 0
+    - Rarity: 4
+      Weight: 0
+  - Id: forest_lake
+    DisplayName: "\uC194\uBC14\uB78C \uD638\uC218 \xB7 \uC911\uAE09"
+    WaterCenter: {x: 10, y: 1}
+    WaterSize: {x: 10, y: 7}
+    ShorePosition: {x: 4.65, y: 1}
+    BobberPosition: {x: 6.15, y: 1}
+    InteractionRange: 1.7
+    DifficultyMultiplier: 1.08
+    RarityWeights:
+    - Rarity: 0
+      Weight: 15
+    - Rarity: 1
+      Weight: 45
+    - Rarity: 2
+      Weight: 32
+    - Rarity: 3
+      Weight: 8
+    - Rarity: 4
+      Weight: 0
+  - Id: ancient_lake
+    DisplayName: "\uACE0\uC694\uD55C \uC2EC\uC5F0 \xB7 \uACE0\uAE09"
+    WaterCenter: {x: -10, y: 8.5}
+    WaterSize: {x: 11, y: 7}
+    ShorePosition: {x: -10, y: 4.65}
+    BobberPosition: {x: -10, y: 6.15}
+    InteractionRange: 1.75
+    DifficultyMultiplier: 1.25
+    RarityWeights:
+    - Rarity: 0
+      Weight: 0
+    - Rarity: 1
+      Weight: 12
+    - Rarity: 2
+      Weight: 43
+    - Rarity: 3
+      Weight: 38
+    - Rarity: 4
+      Weight: 7

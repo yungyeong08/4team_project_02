@@ -37,6 +37,8 @@ public sealed class FishingShopSystem : MonoBehaviour
     private GUIStyle centeredStyle;
     private GUIStyle productNameStyle;
     private GUIStyle messageStyle;
+    private float logicalScreenWidth;
+    private float logicalScreenHeight;
 
     public bool IsOpen => isOpen;
     public bool IsPlayerInRange => isPlayerInRange;
@@ -130,20 +132,27 @@ public sealed class FishingShopSystem : MonoBehaviour
     private void OnGUI()
     {
         if (player == null || shopTarget == null) return;
+        float uiScale = Mathf.Clamp(Screen.height / 1080f, .8f, 2f);
+        Matrix4x4 previousMatrix = GUI.matrix;
+        GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
+        logicalScreenWidth = Screen.width / uiScale;
+        logicalScreenHeight = Screen.height / uiScale;
         EnsureStyles();
 
         if (!isOpen)
         {
             if (isPlayerInRange) DrawInteractionPrompt();
+            GUI.matrix = previousMatrix;
             return;
         }
 
         DrawShopWindow();
+        GUI.matrix = previousMatrix;
     }
 
     private void DrawInteractionPrompt()
     {
-        var prompt = new Rect(Screen.width * .5f - 135f, Screen.height - 92f, 270f, 44f);
+        var prompt = new Rect(logicalScreenWidth * .5f - 145f, logicalScreenHeight - 94f, 290f, 46f);
         GUI.Box(prompt, "");
         GUI.Label(prompt, "F - 상점 열기", centeredStyle);
     }
@@ -152,12 +161,12 @@ public sealed class FishingShopSystem : MonoBehaviour
     {
         Color previousColor = GUI.color;
         GUI.color = new Color(0f, 0f, 0f, .62f);
-        GUI.Box(new Rect(0f, 0f, Screen.width, Screen.height), "");
+        GUI.Box(new Rect(0f, 0f, logicalScreenWidth, logicalScreenHeight), "");
         GUI.color = previousColor;
 
-        float width = Mathf.Min(600f, Screen.width - 36f);
-        float height = Mathf.Min(430f, Screen.height - 36f);
-        var panel = new Rect((Screen.width - width) * .5f, (Screen.height - height) * .5f, width, height);
+        float width = Mathf.Min(720f, logicalScreenWidth - 36f);
+        float height = Mathf.Min(500f, logicalScreenHeight - 36f);
+        var panel = new Rect((logicalScreenWidth - width) * .5f, (logicalScreenHeight - height) * .5f, width, height);
         GUI.Box(panel, "");
 
         GUI.Label(new Rect(panel.x + 24f, panel.y + 15f, panel.width - 96f, 42f), "낚시 상점", titleStyle);

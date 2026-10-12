@@ -1,176 +1,224 @@
+using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Creates one connected fishing lake from the Pixel Crawler Water_tiles source.</summary>
+/// <summary>Builds a medium-sized, data-driven overworld with three replaceable fishing areas.</summary>
 [ExecuteAlways]
 public sealed class PixelMapBuilder : MonoBehaviour
 {
-    public Vector2 PlayerStart { get; private set; } = new(0f, 4.2f);
-    public Vector2 FishingSpot { get; private set; } = new(0f, 3.15f);
-    public Vector2 BobberSpot { get; private set; } = new(0f, -.8f);
+    private const string ConfigResourcePath = "Data/FishingMapConfig";
+
+    [SerializeField] private FishingMapConfig mapConfig;
+    [SerializeField] private Color groundColor = new(.35f, .60f, .24f);
+    [SerializeField] private Color pathColor = new(.68f, .57f, .34f);
+    [SerializeField] private Color waterColor = new(.12f, .48f, .78f);
+    [SerializeField] private Color deepWaterColor = new(.08f, .31f, .61f);
+
+    private readonly List<FishingSpotDefinition> runtimeSpots = new();
+
+    public Vector2 PlayerStart => Config.PlayerStart;
+    public Vector2 MapSize => Config.MapSize;
+    public IReadOnlyList<FishingSpotDefinition> FishingSpots => runtimeSpots;
+    public Transform FishingShop { get; private set; }
+    public Transform FishMarket { get; private set; }
+
+    private FishingMapConfig Config
+    {
+        get
+        {
+            if (mapConfig == null) mapConfig = Resources.Load<FishingMapConfig>(ConfigResourcePath);
+            if (mapConfig == null) mapConfig = FishingMapConfig.CreateRuntimeDefault();
+            if (mapConfig.FishingSpots == null || mapConfig.FishingSpots.Count == 0) mapConfig.ApplyDefaults();
+            return mapConfig;
+        }
+    }
 
     private void OnEnable()
     {
-        // Keep the new art visible in the Scene view without rebuilding or deleting
-        // any of the existing fishing preview objects.
-        if (!Application.isPlaying) CreateDecorations();
+        if (!Application.isPlaying && transform.childCount == 0) Build();
     }
 
-    public void EnsureDecorations()
-    {
-        CreateDecorations();
-    }
+    public void EnsureDecorations() => Build();
 
     public void Build()
     {
-        var source = Resources.Load<Texture2D>("PixelCrawlerWaterTiles");
-        if (source == null) { Debug.LogError("PixelCrawlerWaterTiles is missing from Resources."); return; }
-        source.filterMode = FilterMode.Point;
-        var lakeTexture = BuildLakeTexture(source);
-        CreateGround();
+        ClearGeneratedChildren();
+        runtimeSpots.Clear();
+        runtimeSpots.AddRange(Config.FishingSpots);
 
-        var lake = new GameObject("Fishing Lake");
-        lake.transform.SetParent(transform, false);
-        lake.transform.position = new Vector2(0f, -1.8f);
-        var renderer = lake.AddComponent<SpriteRenderer>();
-        renderer.sprite = Sprite.Create(lakeTexture, new Rect(0, 0, 224, 160), new Vector2(.5f, .5f), 16f);
-        renderer.sortingOrder = -2;
-        var collider = lake.AddComponent<BoxCollider2D>();
-        collider.size = new Vector2(13.5f, 9.5f);
+        Transform groundRoot = CreateRoot("01 Ground and Paths");
+        Transform waterRoot = CreateRoot("02 Water Areas");
+        Transform decorationRoot = CreateRoot("03 Trees and Grass");
+        Transform gameplayRoot = CreateRoot("04 Gameplay Objects");
 
-        CreateDecorations();
+        CreateGroundAndPaths(groundRoot);
+        for (int i = 0; i < runtimeSpots.Count; i++) CreateFishingArea(waterRoot, gameplayRoot, runtimeSpots[i], i);
+        CreateDecorations(decorationRoot);
+        CreateShops(gameplayRoot);
+        CreateMapBounds(gameplayRoot);
     }
 
-    private void CreateDecorations()
+    public FishingSpotDefinition GetNearestFishingSpot(Vector2 playerPosition)
     {
-        var treeTexture = Resources.Load<Texture2D>("Sprites/Environment/Tree1");
-        var grassTexture = Resources.Load<Texture2D>("Sprites/Environment/grass1");
-        var shopTexture = Resources.Load<Texture2D>("Sprites/Environment/FishingShop");
-        if (treeTexture == null || grassTexture == null) return;
-
-        treeTexture.filterMode = FilterMode.Point;
-        grassTexture.filterMode = FilterMode.Point;
-        if (shopTexture != null) shopTexture.filterMode = FilterMode.Point;
-
-        var root = transform.Find("Art Decorations");
-        if (root == null)
+        FishingSpotDefinition nearest = null;
+        float nearestDistance = float.MaxValue;
+        foreach (FishingSpotDefinition spot in runtimeSpots)
         {
-            var rootObject = new GameObject("Art Decorations");
-            rootObject.transform.SetParent(transform, false);
-            root = rootObject.transform;
-
-            Vector2[] treePositions =
+            float distance = Vector2.Distance(playerPosition, spot.ShorePosition);
+            if (distance <= spot.InteractionRange && distance < nearestDistance)
             {
-                new(-5.8f, 5.2f), new(5.9f, 5.5f), new(-8.2f, 1.2f), new(8.3f, 1.5f)
-            };
-            foreach (var position in treePositions)
-                CreateDecoration(root, "Tree", treeTexture, position, 32f, 2, true);
-
-            Vector2[] grassPositions =
-            {
-                new(-4.5f, 4.1f), new(-2.8f, 5.6f), new(2.9f, 4.5f), new(4.7f, 6.0f),
-                new(-7.3f, 3.8f), new(7.1f, 3.9f), new(-9.0f, -2.8f), new(9.1f, -3.2f)
-            };
-            foreach (var position in grassPositions)
-                CreateDecoration(root, "Grass", grassTexture, position, 32f, 0, false);
+                nearest = spot;
+                nearestDistance = distance;
+            }
         }
-
-        if (shopTexture != null && root.Find("Fishing Shop") == null)
-            CreateFishingShop(root, shopTexture);
-
-        if (root.Find("Fish Market") == null)
-            CreateFishMarket(root);
+        return nearest;
     }
 
-    private static void CreateFishMarket(Transform parent)
+    private Transform CreateRoot(string objectName)
     {
-        var market = new GameObject("Fish Market");
-        market.transform.SetParent(parent, false);
-        market.transform.position = new Vector2(-4.8f, 3.35f);
-
-        var texture = new Texture2D(1, 1) { filterMode = FilterMode.Point };
-        texture.SetPixel(0, 0, Color.white);
-        texture.Apply();
-
-        var renderer = market.AddComponent<SpriteRenderer>();
-        renderer.sprite = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(.5f, 0f), 1f);
-        renderer.color = new Color(.78f, .34f, .18f);
-        renderer.sortingOrder = 2;
-        market.transform.localScale = new Vector3(1.9f, 1.35f, 1f);
-
-        var collider = market.AddComponent<BoxCollider2D>();
-        collider.size = new Vector2(1f, .42f);
-        collider.offset = new Vector2(0f, .21f);
+        var root = new GameObject(objectName);
+        root.transform.SetParent(transform, false);
+        return root.transform;
     }
 
-    private static void CreateFishingShop(Transform parent, Texture2D texture)
+    private void CreateGroundAndPaths(Transform parent)
     {
-        var shop = new GameObject("Fishing Shop");
-        shop.transform.SetParent(parent, false);
-        shop.transform.position = new Vector2(4.8f, 3.35f);
-
-        var renderer = shop.AddComponent<SpriteRenderer>();
-        renderer.sprite = Sprite.Create(
-            texture,
-            new Rect(0, 0, texture.width, texture.height),
-            new Vector2(.5f, 0f),
-            32f);
-        renderer.sortingOrder = 2;
-
-        // Only the counter/building base blocks movement so the player can walk
-        // naturally in front of the sign and roof.
-        var collider = shop.AddComponent<BoxCollider2D>();
-        collider.size = new Vector2(1.65f, .7f);
-        collider.offset = new Vector2(0f, .35f);
+        CreateRect(parent, "Grass Ground", Vector2.zero, Config.MapSize, groundColor, -10, false);
+        CreateRect(parent, "Village Road", new Vector2(0f, -8f), new Vector2(14f, 2.2f), pathColor, -8, false);
+        CreateRect(parent, "North-South Trail", new Vector2(0f, 2f), new Vector2(2.2f, 22f), pathColor, -8, false);
+        CreateRect(parent, "Forest Lake Trail", new Vector2(3f, 1f), new Vector2(6f, 1.7f), pathColor, -8, false);
+        CreateRect(parent, "Beginner Pond Trail", new Vector2(-3f, -8f), new Vector2(6f, 1.7f), pathColor, -8, false);
+        CreateRect(parent, "Deep Lake Trail", new Vector2(-5f, 4.5f), new Vector2(10f, 1.7f), pathColor, -8, false);
+        CreateRect(parent, "Southern Entrance", new Vector2(0f, -13f), new Vector2(2.2f, 8f), pathColor, -8, false);
+        CreateRect(parent, "Village Square", new Vector2(0f, -8f), new Vector2(8f, 5f), new Color(.57f, .49f, .30f), -7, false);
     }
 
-    private static void CreateDecoration(
-        Transform parent,
-        string objectName,
-        Texture2D texture,
-        Vector2 position,
-        float pixelsPerUnit,
-        int sortingOrder,
-        bool blocksPlayer)
+    private void CreateFishingArea(Transform waterParent, Transform gameplayParent, FishingSpotDefinition spot, int index)
+    {
+        CreateRect(waterParent, spot.DisplayName + " Shore", spot.WaterCenter,
+            spot.WaterSize + new Vector2(.55f, .55f), new Color(.78f, .72f, .45f), -7, false);
+        Color color = index == 2 ? deepWaterColor : waterColor;
+        CreateRect(waterParent, spot.DisplayName, spot.WaterCenter, spot.WaterSize, color, -6, true);
+
+        Vector2 dockDirection = (spot.BobberPosition - spot.ShorePosition).normalized;
+        bool horizontal = Mathf.Abs(dockDirection.x) > Mathf.Abs(dockDirection.y);
+        Vector2 dockSize = horizontal ? new Vector2(1.15f, .72f) : new Vector2(.72f, 1.15f);
+        CreateRect(gameplayParent, spot.DisplayName + " Dock", Vector2.Lerp(spot.ShorePosition, spot.BobberPosition, .28f),
+            dockSize, new Color(.48f, .29f, .15f), 0, false);
+
+        GameObject marker = CreateRect(gameplayParent, spot.DisplayName + " Fishing Marker",
+            spot.ShorePosition + new Vector2(0f, .18f), new Vector2(.34f, .34f),
+            index == 0 ? new Color(.75f, .94f, .40f) : index == 1 ? new Color(.95f, .72f, .25f) : new Color(.77f, .37f, .93f),
+            1, false);
+        marker.transform.rotation = Quaternion.Euler(0f, 0f, 45f);
+    }
+
+    private void CreateDecorations(Transform parent)
+    {
+        Texture2D treeTexture = Resources.Load<Texture2D>("Sprites/Environment/Tree1");
+        Texture2D grassTexture = Resources.Load<Texture2D>("Sprites/Environment/grass1");
+        if (treeTexture != null) treeTexture.filterMode = FilterMode.Point;
+        if (grassTexture != null) grassTexture.filterMode = FilterMode.Point;
+
+        Vector2[] treePositions =
+        {
+            new(-20f,-13f), new(-17f,-13f), new(-13f,-13f), new(13f,-13f), new(17f,-13f), new(20f,-13f),
+            new(-20f,-4f), new(-18f,0f), new(-20f,5f), new(-19f,11f), new(-15f,13f),
+            new(20f,-5f), new(19f,0f), new(20f,6f), new(18f,11f), new(14f,13f),
+            new(-4f,11.5f), new(2.8f,11f), new(6f,8f), new(8f,6.5f), new(14.5f,6f),
+            new(-15.5f,2.5f), new(-14f,-2f), new(-13f,-5f), new(8f,-7f), new(12f,-7f), new(15f,-9f)
+        };
+        if (treeTexture != null)
+            foreach (Vector2 position in treePositions) CreateSpriteDecoration(parent, "Tree", treeTexture, position, 32f, 2, true);
+
+        Vector2[] grassPositions =
+        {
+            new(-18f,-9f), new(-15f,-7f), new(-13f,-11f), new(-7f,-12f), new(7f,-12f), new(11f,-10f),
+            new(-16f,7f), new(-15f,11f), new(-5f,8f), new(-3f,6f), new(4f,7f), new(7f,10f),
+            new(15f,3f), new(16f,-1f), new(15f,-4f), new(4f,-3f), new(-5f,-3f), new(-2f,1f)
+        };
+        if (grassTexture != null)
+            foreach (Vector2 position in grassPositions) CreateSpriteDecoration(parent, "Grass", grassTexture, position, 32f, -1, false);
+    }
+
+    private void CreateShops(Transform parent)
+    {
+        Texture2D shopTexture = Resources.Load<Texture2D>("Sprites/Environment/FishingShop");
+        if (shopTexture != null)
+        {
+            shopTexture.filterMode = FilterMode.Point;
+            FishingShop = CreateSpriteDecoration(parent, "Fishing Shop", shopTexture, Config.FishingShopPosition, 32f, 2, true).transform;
+        }
+        else FishingShop = CreateRect(parent, "Fishing Shop", Config.FishingShopPosition, new Vector2(2f, 1.4f), new Color(.25f, .55f, .86f), 2, true).transform;
+
+        FishMarket = CreateRect(parent, "Fish Market", Config.FishMarketPosition, new Vector2(2.1f, 1.45f), new Color(.78f, .34f, .18f), 2, true).transform;
+    }
+
+    private void CreateMapBounds(Transform parent)
+    {
+        float halfWidth = Config.MapSize.x * .5f;
+        float halfHeight = Config.MapSize.y * .5f;
+        CreateInvisibleCollider(parent, "North Boundary", new Vector2(0f, halfHeight + .25f), new Vector2(Config.MapSize.x + 1f, .5f));
+        CreateInvisibleCollider(parent, "South Boundary", new Vector2(0f, -halfHeight - .25f), new Vector2(Config.MapSize.x + 1f, .5f));
+        CreateInvisibleCollider(parent, "West Boundary", new Vector2(-halfWidth - .25f, 0f), new Vector2(.5f, Config.MapSize.y + 1f));
+        CreateInvisibleCollider(parent, "East Boundary", new Vector2(halfWidth + .25f, 0f), new Vector2(.5f, Config.MapSize.y + 1f));
+    }
+
+    private static GameObject CreateRect(Transform parent, string objectName, Vector2 position, Vector2 size, Color color, int sortingOrder, bool blocksPlayer)
+    {
+        var rectangle = new GameObject(objectName);
+        rectangle.transform.SetParent(parent, false);
+        rectangle.transform.position = position;
+        rectangle.transform.localScale = new Vector3(size.x, size.y, 1f);
+        var renderer = rectangle.AddComponent<SpriteRenderer>();
+        renderer.sprite = CreateSolidSprite();
+        renderer.color = color;
+        renderer.sortingOrder = sortingOrder;
+        if (blocksPlayer) rectangle.AddComponent<BoxCollider2D>();
+        return rectangle;
+    }
+
+    private static GameObject CreateSpriteDecoration(Transform parent, string objectName, Texture2D texture, Vector2 position, float pixelsPerUnit, int sortingOrder, bool blocksPlayer)
     {
         var decoration = new GameObject(objectName);
         decoration.transform.SetParent(parent, false);
         decoration.transform.position = position;
-
         var renderer = decoration.AddComponent<SpriteRenderer>();
-        renderer.sprite = Sprite.Create(
-            texture,
-            new Rect(0, 0, texture.width, texture.height),
-            blocksPlayer ? new Vector2(.5f, 0f) : new Vector2(.5f, .5f),
-            pixelsPerUnit);
+        renderer.sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), blocksPlayer ? new Vector2(.5f, 0f) : new Vector2(.5f, .5f), pixelsPerUnit);
         renderer.sortingOrder = sortingOrder;
-
-        if (!blocksPlayer) return;
-        var collider = decoration.AddComponent<BoxCollider2D>();
-        collider.size = new Vector2(.55f, .42f);
-        collider.offset = new Vector2(0f, .2f);
+        if (blocksPlayer)
+        {
+            var collider = decoration.AddComponent<BoxCollider2D>();
+            collider.size = new Vector2(.65f, .42f);
+            collider.offset = new Vector2(0f, .21f);
+        }
+        return decoration;
     }
 
-    private void CreateGround()
+    private static Sprite CreateSolidSprite()
     {
-        var ground = new GameObject("Ground");
-        ground.transform.SetParent(transform, false);
-        ground.transform.position = new Vector2(0f, -1f);
-        var texture = new Texture2D(1, 1) { filterMode = FilterMode.Point };
-        texture.SetPixel(0, 0, new Color(.35f, .60f, .24f)); texture.Apply();
-        var renderer = ground.AddComponent<SpriteRenderer>();
-        renderer.sprite = Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(.5f, .5f), 1f);
-        renderer.sortingOrder = -5;
-        ground.transform.localScale = new Vector3(30f, 24f, 1f);
+        var texture = new Texture2D(1, 1) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
+        texture.SetPixel(0, 0, Color.white);
+        texture.Apply();
+        return Sprite.Create(texture, new Rect(0, 0, 1, 1), new Vector2(.5f, .5f), 1f);
     }
 
-    private static Texture2D BuildLakeTexture(Texture2D source)
+    private static void CreateInvisibleCollider(Transform parent, string objectName, Vector2 position, Vector2 size)
     {
-        // Inspected from Water_tiles.png: this fully opaque 16px area is the repeating water-surface center.
-        Color[] center = source.GetPixels(16, 184, 16, 16);
-        var lake = new Texture2D(224, 160, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point, wrapMode = TextureWrapMode.Clamp };
-        for (int y = 0; y < 160; y += 16)
-            for (int x = 0; x < 224; x += 16) lake.SetPixels(x, y, 16, 16, center);
-        lake.Apply();
-        return lake;
+        var boundary = new GameObject(objectName);
+        boundary.transform.SetParent(parent, false);
+        boundary.transform.position = position;
+        boundary.AddComponent<BoxCollider2D>().size = size;
+    }
+
+    private void ClearGeneratedChildren()
+    {
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            GameObject child = transform.GetChild(i).gameObject;
+            if (Application.isPlaying) Destroy(child);
+            else DestroyImmediate(child);
+        }
+        FishingShop = null;
+        FishMarket = null;
     }
 }
