@@ -1,72 +1,53 @@
-using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>Handles fishing-shop proximity, input, product presentation, and purchases.</summary>
 public sealed class FishingShopSystem : MonoBehaviour
 {
-    [Serializable]
-    public sealed class ShopProduct
-    {
-        public string Id;
-        public string DisplayName;
-        [Min(0)] public int Price;
-        [TextArea] public string Description;
-
-        public ShopProduct(string id, string displayName, int price, string description)
-        {
-            Id = id;
-            DisplayName = displayName;
-            Price = price;
-            Description = description;
-        }
-    }
-
     [SerializeField, Min(.5f)] private float interactionRange = 1.8f;
-    [SerializeField] private List<ShopProduct> products = new();
 
     private PixelCharacter player;
     private Transform shopTarget;
     private PlayerWallet wallet;
     private FishingRodInventory inventory;
+    private List<FishingRodDefinition> rodCatalog;
+    private System.Func<bool> inputBlocked;
     private Vector2 scrollPosition;
     private bool isOpen;
     private bool isPlayerInRange;
     private string statusMessage = "상품을 선택해 주세요.";
-    private GUIStyle titleStyle;
-    private GUIStyle centeredStyle;
-    private GUIStyle productNameStyle;
-    private GUIStyle messageStyle;
     private float logicalScreenWidth;
     private float logicalScreenHeight;
 
     public bool IsOpen => isOpen;
     public bool IsPlayerInRange => isPlayerInRange;
-    public int ProductCount => products.Count;
+    public int ProductCount => rodCatalog?.Count ?? 0;
     public string StatusMessage => statusMessage;
 
-    public void Setup(PixelCharacter playerCharacter, Transform target, PlayerWallet playerWallet, FishingRodInventory rodInventory)
+    public void Setup(
+        PixelCharacter playerCharacter,
+        Transform target,
+        PlayerWallet playerWallet,
+        FishingRodInventory rodInventory,
+        List<FishingRodDefinition> catalog)
     {
         player = playerCharacter;
         shopTarget = target;
         wallet = playerWallet;
         inventory = rodInventory;
-
-        if (products.Count == 0)
-        {
-            products.Add(new ShopProduct(
-                "sturdy_rod",
-                "튼튼한 낚싯대",
-                500,
-                "기본 낚싯대보다 안정적으로 사용할 수 있는 낚싯대입니다."));
-        }
+        rodCatalog = catalog ?? FishingRodCatalog.CreateDefault();
+        inventory?.EnsureDefaultRod();
 
         RefreshRange();
     }
 
+    public void SetInputBlocker(System.Func<bool> blocker) => inputBlocked = blocker;
+
     private void Update()
     {
         RefreshRange();
+
+        if (!isOpen && inputBlocked != null && inputBlocked()) return;
 
         if (isOpen)
         {
@@ -99,7 +80,7 @@ public sealed class FishingShopSystem : MonoBehaviour
 
     public bool TryPurchase(string productId)
     {
-        ShopProduct product = products.Find(candidate => candidate.Id == productId);
+        FishingRodDefinition product = rodCatalog?.Find(candidate => candidate.Id == productId);
         if (product == null || wallet == null || inventory == null)
         {
             statusMessage = "상품 정보를 불러오지 못했습니다.";
@@ -137,11 +118,12 @@ public sealed class FishingShopSystem : MonoBehaviour
         GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
         logicalScreenWidth = Screen.width / uiScale;
         logicalScreenHeight = Screen.height / uiScale;
-        EnsureStyles();
+        FishingUiTheme.Ensure();
 
         if (!isOpen)
         {
-            if (isPlayerInRange) DrawInteractionPrompt();
+            bool blocked = inputBlocked != null && inputBlocked();
+            if (isPlayerInRange && !blocked) DrawInteractionPrompt();
             GUI.matrix = previousMatrix;
             return;
         }
@@ -153,81 +135,57 @@ public sealed class FishingShopSystem : MonoBehaviour
     private void DrawInteractionPrompt()
     {
         var prompt = new Rect(logicalScreenWidth * .5f - 145f, logicalScreenHeight - 94f, 290f, 46f);
-        GUI.Box(prompt, "");
-        GUI.Label(prompt, "F - 상점 열기", centeredStyle);
+        FishingUiTheme.DrawPanel(prompt, true);
+        GUI.Label(prompt, "F  -  낚시 상점 열기", FishingUiTheme.BodyCentered);
     }
 
     private void DrawShopWindow()
     {
-        Color previousColor = GUI.color;
-        GUI.color = new Color(0f, 0f, 0f, .62f);
-        GUI.Box(new Rect(0f, 0f, logicalScreenWidth, logicalScreenHeight), "");
-        GUI.color = previousColor;
+        FishingUiTheme.DrawDim(new Rect(0f, 0f, logicalScreenWidth, logicalScreenHeight));
 
         float width = Mathf.Min(720f, logicalScreenWidth - 36f);
         float height = Mathf.Min(500f, logicalScreenHeight - 36f);
         var panel = new Rect((logicalScreenWidth - width) * .5f, (logicalScreenHeight - height) * .5f, width, height);
-        GUI.Box(panel, "");
+        FishingUiTheme.DrawPanel(panel);
 
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 15f, panel.width - 96f, 42f), "낚시 상점", titleStyle);
-        if (GUI.Button(new Rect(panel.xMax - 52f, panel.y + 14f, 36f, 32f), "X")) CloseShop();
+        GUI.Label(new Rect(panel.x + 24f, panel.y + 15f, panel.width - 96f, 42f), "낚시 상점", FishingUiTheme.Title);
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 55f, panel.y + 14f, 38f, 34f), "×", danger: true)) CloseShop();
+        FishingUiTheme.DrawDivider(new Rect(panel.x + 22f, panel.y + 60f, panel.width - 44f, 2f));
 
         int balance = wallet != null ? wallet.Balance : 0;
-        GUI.Label(new Rect(panel.x + 25f, panel.y + 58f, panel.width - 50f, 28f), $"보유 금액: {balance:N0} G", productNameStyle);
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 66f, panel.width - 50f, 28f), $"보유 금액  {balance:N0} G", FishingUiTheme.Heading);
 
-        var viewRect = new Rect(panel.x + 20f, panel.y + 94f, panel.width - 40f, panel.height - 160f);
-        float contentHeight = Mathf.Max(viewRect.height - 4f, products.Count * 112f);
+        var viewRect = new Rect(panel.x + 20f, panel.y + 102f, panel.width - 40f, panel.height - 168f);
+        int productCount = rodCatalog != null ? rodCatalog.Count : 0;
+        float contentHeight = Mathf.Max(viewRect.height - 4f, productCount * 126f);
         scrollPosition = GUI.BeginScrollView(viewRect, scrollPosition, new Rect(0f, 0f, viewRect.width - 18f, contentHeight));
-        for (int i = 0; i < products.Count; i++) DrawProduct(products[i], new Rect(2f, i * 112f, viewRect.width - 24f, 100f));
+        if (rodCatalog != null)
+            for (int i = 0; i < rodCatalog.Count; i++)
+                DrawProduct(rodCatalog[i], new Rect(2f, i * 126f, viewRect.width - 24f, 114f));
         GUI.EndScrollView();
 
-        GUI.Label(new Rect(panel.x + 22f, panel.yMax - 58f, panel.width - 44f, 26f), statusMessage, messageStyle);
-        GUI.Label(new Rect(panel.x + 22f, panel.yMax - 32f, panel.width - 44f, 22f), "ESC 또는 오른쪽 위 X 버튼으로 닫기", centeredStyle);
+        FishingUiTheme.ColoredLabel(new Rect(panel.x + 22f, panel.yMax - 58f, panel.width - 44f, 26f),
+            statusMessage, FishingUiTheme.BodyCentered, FishingUiTheme.Gold);
+        GUI.Label(new Rect(panel.x + 22f, panel.yMax - 32f, panel.width - 44f, 22f), "ESC 또는 오른쪽 위 × 버튼으로 닫기", FishingUiTheme.SmallCentered);
     }
 
-    private void DrawProduct(ShopProduct product, Rect row)
+    private void DrawProduct(FishingRodDefinition product, Rect row)
     {
-        GUI.Box(row, "");
-        GUI.Label(new Rect(row.x + 15f, row.y + 10f, row.width - 160f, 28f), product.DisplayName, productNameStyle);
-        GUI.Label(new Rect(row.x + 15f, row.y + 40f, row.width - 160f, 45f), product.Description);
-        GUI.Label(new Rect(row.xMax - 138f, row.y + 12f, 120f, 24f), $"{product.Price:N0} G", centeredStyle);
+        if (product == null) return;
+        FishingUiTheme.DrawCard(row, false);
+        Rect iconRect = new(row.x + 14f, row.y + 18f, 64f, 64f);
+        FishingUiTheme.DrawTextureOrSwatch(iconRect, product.Icon, product.RarityColor);
+        GUI.Label(new Rect(row.x + 92f, row.y + 8f, row.width - 252f, 28f), product.DisplayName, FishingUiTheme.Heading);
+        FishingUiTheme.ColoredLabel(new Rect(row.x + 92f, row.y + 37f, 160f, 24f), product.RarityName, FishingUiTheme.Body, product.RarityColor);
+        GUI.Label(new Rect(row.x + 92f, row.y + 63f, row.width - 252f, 40f), product.StatSummary, FishingUiTheme.Small);
+        FishingUiTheme.ColoredLabel(new Rect(row.xMax - 138f, row.y + 12f, 120f, 24f),
+            $"{product.Price:N0} G", FishingUiTheme.BodyCentered, FishingUiTheme.Gold);
 
         bool owned = inventory != null && inventory.Owns(product.Id);
-        bool previousEnabled = GUI.enabled;
-        GUI.enabled = !owned;
-        if (GUI.Button(new Rect(row.xMax - 138f, row.y + 48f, 120f, 36f), owned ? "구매 완료" : "구매"))
+        bool equipped = inventory != null && inventory.EquippedRodId == product.Id;
+        string buttonText = equipped ? "장착 중" : owned ? "보유 중" : product.Price <= 0 ? "기본 지급" : "구매";
+        if (FishingUiTheme.StyledButton(new Rect(row.xMax - 138f, row.y + 52f, 120f, 40f), buttonText,
+            primary: !owned && product.Price > 0, enabled: !owned && product.Price > 0))
             TryPurchase(product.Id);
-        GUI.enabled = previousEnabled;
-    }
-
-    private void EnsureStyles()
-    {
-        if (titleStyle != null) return;
-        titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 25,
-            fontStyle = FontStyle.Bold,
-            normal = { textColor = Color.white }
-        };
-        centeredStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 15,
-            normal = { textColor = Color.white }
-        };
-        productNameStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 17,
-            fontStyle = FontStyle.Bold,
-            normal = { textColor = Color.white }
-        };
-        messageStyle = new GUIStyle(centeredStyle)
-        {
-            fontSize = 15,
-            fontStyle = FontStyle.Bold,
-            normal = { textColor = new Color(.95f, .82f, .3f) }
-        };
     }
 }

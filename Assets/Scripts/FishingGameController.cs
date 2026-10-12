@@ -9,7 +9,9 @@ public sealed class FishingGameController : MonoBehaviour
     private PixelCharacter character;
     private Camera gameCamera;
     private GameObject bobber;
+    private FishingBalanceConfig balanceConfig;
     private List<FishDefinition> fishCatalog;
+    private List<FishingRodDefinition> rodCatalog;
     private FishDefinition currentFish;
     private FishingSpotDefinition activeFishingSpot;
     private float waitTimer;
@@ -22,13 +24,20 @@ public sealed class FishingGameController : MonoBehaviour
     private float escape;
     private float resultTimer;
     private string message = "이동: WASD 또는 방향키";
-    private string result = "";
+    private FishDefinition resultFish;
+    private bool resultSuccess;
+    private string resultDetails = "";
     private bool initialized;
     private PixelMapBuilder map;
     private FishingShopSystem shopSystem;
     private FishMarketSystem fishMarketSystem;
     private FishInventory fishInventory;
-    private GUIStyle overlayStyle;
+    private FishingRodInventory rodInventory;
+    private PlayerProgressUI progressUI;
+    private GameSaveSystem saveSystem;
+
+    public bool IsFishingActive => state != State.Explore;
+    public string EquippedRodId => rodInventory != null ? rodInventory.EquippedRodId : "";
 
     private void Awake()
     {
@@ -45,7 +54,9 @@ public sealed class FishingGameController : MonoBehaviour
         if (initialized || !Application.isPlaying) return;
         // Clear the temporary Scene-view objects created by the earlier prototype.
         for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
-        fishCatalog = FishCatalog.CreateDefault();
+        balanceConfig = FishingBalanceConfig.LoadOrCreateRuntimeDefault();
+        fishCatalog = balanceConfig.Fish;
+        rodCatalog = balanceConfig.Rods;
         BuildWorld();
         initialized = true;
     }
@@ -77,13 +88,22 @@ public sealed class FishingGameController : MonoBehaviour
         character.Setup();
         var wallet = player.AddComponent<PlayerWallet>();
         wallet.Initialize(1000);
-        var inventory = player.AddComponent<FishingRodInventory>();
+        rodInventory = player.AddComponent<FishingRodInventory>();
+        rodInventory.EnsureDefaultRod();
         fishInventory = player.AddComponent<FishInventory>();
 
         shopSystem = gameObject.AddComponent<FishingShopSystem>();
-        shopSystem.Setup(character, map.FishingShop, wallet, inventory);
+        shopSystem.Setup(character, map.FishingShop, wallet, rodInventory, rodCatalog);
         fishMarketSystem = gameObject.AddComponent<FishMarketSystem>();
         fishMarketSystem.Setup(character, map.FishMarket, wallet, fishInventory, fishCatalog);
+
+        saveSystem = gameObject.AddComponent<GameSaveSystem>();
+        saveSystem.Setup(wallet, fishInventory, rodInventory, player.transform, map.PlayerStart, map.MapSize, fishCatalog, rodCatalog);
+
+        progressUI = gameObject.AddComponent<PlayerProgressUI>();
+        progressUI.Setup(wallet, fishInventory, rodInventory, fishCatalog, rodCatalog, saveSystem, this, shopSystem, fishMarketSystem);
+        shopSystem.SetInputBlocker(() => progressUI != null && progressUI.IsBlockingGameplay);
+        fishMarketSystem.SetInputBlocker(() => progressUI != null && progressUI.IsBlockingGameplay);
 
         var follow = gameCamera.gameObject.GetComponent<CameraFollow2D>();
         if (follow == null) follow = gameCamera.gameObject.AddComponent<CameraFollow2D>();
@@ -118,12 +138,14 @@ public sealed class FishingGameController : MonoBehaviour
             if (resultTimer <= 0f)
             {
                 resultTimer = 0f;
-                result = "";
+                resultFish = null;
+                resultDetails = "";
             }
         }
 
         if (state == State.Explore)
         {
+            if (progressUI != null && progressUI.IsBlockingGameplay) return;
             if ((shopSystem != null && shopSystem.IsOpen) || (fishMarketSystem != null && fishMarketSystem.IsOpen)) return;
             if (character != null) character.Move();
             if (shopSystem != null && shopSystem.IsPlayerInRange)
@@ -153,7 +175,8 @@ public sealed class FishingGameController : MonoBehaviour
     {
         activeFishingSpot = spot;
         state = State.Waiting; character.SetFishing(true);
-        result = "";
+        resultFish = null;
+        resultDetails = "";
         resultTimer = 0f;
         message = $"{spot.DisplayName}에 낚싯줄을 던졌습니다…  (ESC: 취소)";
         bobber = CreateRect("Bobber", spot.BobberPosition, new Vector2(.22f, .22f), new Color(1f, .28f, .2f), 4);
@@ -185,6 +208,7 @@ public sealed class FishingGameController : MonoBehaviour
     {
         float input = (Input.GetMouseButton(0) || Input.GetKey(KeyCode.Space)) ? 1f : -1f;
         float zoneSize = AdjustedReelZoneSize;
+        float rodFishSpeedMultiplier = EquippedRod != null ? EquippedRod.FishSpeedMultiplier : 1f;
 
         // Keep the original weighty control feel; difficulty now comes from reading the fish,
         // not from an overly sensitive player bar.
@@ -194,22 +218,23 @@ public sealed class FishingGameController : MonoBehaviour
         reelPosition = Mathf.Clamp(reelPosition + reelVelocity * Time.deltaTime, 0f, 1f - zoneSize);
 
         const float fishSpeedScale = .72f;
-        fishVelocity += Mathf.Sin(Time.time * 3.1f) * currentFish.MovementAcceleration * EffectiveSpotDifficulty * fishSpeedScale * Time.deltaTime;
+        fishVelocity += Mathf.Sin(Time.time * 3.1f) * currentFish.MovementAcceleration * EffectiveSpotDifficulty * fishSpeedScale * rodFishSpeedMultiplier * Time.deltaTime;
         directionTimer -= Time.deltaTime;
         if (directionTimer <= 0f)
         {
-            float impulse = currentFish.DirectionImpulse * EffectiveSpotDifficulty * fishSpeedScale;
+            float impulse = currentFish.DirectionImpulse * EffectiveSpotDifficulty * fishSpeedScale * rodFishSpeedMultiplier;
             fishVelocity += Random.Range(-impulse, impulse);
             directionTimer = Random.Range(AdjustedDirectionInterval * .65f, AdjustedDirectionInterval * 1.35f);
         }
-        float maxSpeed = currentFish.MaxSpeed * EffectiveSpotDifficulty * fishSpeedScale;
+        float maxSpeed = currentFish.MaxSpeed * EffectiveSpotDifficulty * fishSpeedScale * rodFishSpeedMultiplier;
         fishVelocity = Mathf.Clamp(fishVelocity, -maxSpeed, maxSpeed);
         fishPosition += fishVelocity * Time.deltaTime;
         if (fishPosition < .02f || fishPosition > .98f) fishVelocity *= -1f;
         fishPosition = Mathf.Clamp(fishPosition, .02f, .98f);
         bool aligned = fishPosition >= reelPosition && fishPosition <= reelPosition + zoneSize;
         float difficultyRoot = Mathf.Sqrt(EffectiveSpotDifficulty);
-        progress = Mathf.Clamp01(progress + (aligned ? currentFish.CatchRate / difficultyRoot : -.08f) * Time.deltaTime);
+        float rodCatchMultiplier = EquippedRod != null ? EquippedRod.CatchRateMultiplier : 1f;
+        progress = Mathf.Clamp01(progress + (aligned ? currentFish.CatchRate * rodCatchMultiplier / difficultyRoot : -.08f) * Time.deltaTime);
         escape = Mathf.Clamp01(escape + (aligned ? -.20f : currentFish.EscapeRate * difficultyRoot) * Time.deltaTime);
         if (progress >= 1) ResetFishing("물고기를 잡았습니다! F 키로 다시 낚시할 수 있습니다.");
         else if (escape >= 1) ResetFishing("물고기가 도망갔습니다. F 키로 다시 시도하세요.");
@@ -219,12 +244,22 @@ public sealed class FishingGameController : MonoBehaviour
     private void ResetFishing(string newMessage)
     {
         bool caughtFish = state == State.Reeling && progress >= 1f;
-        result = caughtFish && currentFish != null ? currentFish.DisplayName : "";
+        bool escapedFish = state == State.Reeling && escape >= 1f;
+        resultFish = caughtFish ? currentFish : null;
+        resultSuccess = caughtFish;
+        resultDetails = caughtFish && currentFish != null
+            ? $"{currentFish.DisplayName} · {currentFish.RarityName} · 판매가 {currentFish.SalePrice:N0} G"
+            : escapedFish ? "물고기를 놓쳤습니다. 다시 도전해 보세요." : "";
         if (caughtFish && currentFish != null && fishInventory != null) fishInventory.Add(currentFish.Id);
-        resultTimer = caughtFish ? 3f : 0f;
+        resultTimer = caughtFish || escapedFish ? 5.5f : 0f;
         state = State.Explore;
         message = newMessage;
-        character.SetFishing(false);
+        character?.SetFishing(false);
+        reelVelocity = 0f;
+        fishVelocity = 0f;
+        directionTimer = 0f;
+        progress = 0f;
+        escape = 0f;
         if (bobber != null) Destroy(bobber);
         bobber = null;
         currentFish = null;
@@ -233,7 +268,8 @@ public sealed class FishingGameController : MonoBehaviour
 
     private void OnGUI()
     {
-        if ((shopSystem != null && (shopSystem.IsOpen || shopSystem.IsPlayerInRange)) ||
+        if ((progressUI != null && progressUI.IsBlockingGameplay) ||
+            (shopSystem != null && (shopSystem.IsOpen || shopSystem.IsPlayerInRange)) ||
             (fishMarketSystem != null && (fishMarketSystem.IsOpen || fishMarketSystem.IsPlayerInRange))) return;
 
         float uiScale = Mathf.Clamp(Screen.height / 1080f, .8f, 2f);
@@ -245,53 +281,77 @@ public sealed class FishingGameController : MonoBehaviour
 
     private void DrawFishingOverlay(float screenWidth, float screenHeight)
     {
-        EnsureOverlayStyle();
-        GUI.Box(new Rect(screenWidth / 2 - 360, 18, 720, 46), "");
-        GUI.Label(new Rect(screenWidth / 2 - 350, 21, 700, 39), message, overlayStyle);
-        if (state != State.Reeling) { if (!string.IsNullOrEmpty(result)) GUI.Label(new Rect(screenWidth/2-240, 72, 480, 38), "획득: " + result, overlayStyle); return; }
+        FishingUiTheme.Ensure();
+        var messagePanel = new Rect(screenWidth / 2f - 390f, 18f, 780f, 54f);
+        FishingUiTheme.DrawPanel(messagePanel, true);
+        GUI.Label(new Rect(messagePanel.x + 14f, messagePanel.y + 5f, messagePanel.width - 28f, 44f), message, FishingUiTheme.Banner);
+        if (state != State.Reeling)
+        {
+            if (resultTimer > 0f) DrawResultWindow(screenWidth, screenHeight);
+            return;
+        }
 
         float trackWidth = Mathf.Min(1100f, screenWidth - 100f);
-        var track = new Rect((screenWidth - trackWidth) * .5f, screenHeight - 190f, trackWidth, 56f);
-        GUI.Box(track, "");
+        var trackPanel = new Rect((screenWidth - trackWidth) * .5f - 16f, screenHeight - 222f, trackWidth + 32f, 176f);
+        FishingUiTheme.DrawPanel(trackPanel);
+        GUI.Label(new Rect(trackPanel.x + 18f, trackPanel.y + 8f, trackPanel.width - 36f, 28f),
+            $"{currentFish.DisplayName}  ·  {currentFish.RarityName}     [스페이스 / 마우스 왼쪽]", FishingUiTheme.BodyCentered);
+        var track = new Rect((screenWidth - trackWidth) * .5f, trackPanel.y + 42f, trackWidth, 62f);
+        FishingUiTheme.DrawCard(track, true);
         float zoneSize = currentFish != null ? AdjustedReelZoneSize : .2f;
-        Rect captureZone = new(track.x + reelPosition * track.width, track.y + 5, zoneSize * track.width, track.height - 10);
-        GUI.color = new Color(1f, 1f, 1f, .72f);
+        Rect captureZone = new(track.x + reelPosition * track.width, track.y + 4f, zoneSize * track.width, track.height - 8f);
+        GUI.color = new Color(.39f, .90f, .61f, .70f);
         GUI.DrawTexture(captureZone, Texture2D.whiteTexture);
         GUI.color = Color.white;
         if (currentFish?.Icon != null)
         {
-            float fishX = Mathf.Lerp(track.x + 32f, track.xMax - 32f, fishPosition);
-            GUI.DrawTexture(new Rect(fishX - 32f, track.y - 18f, 64f, 64f), currentFish.Icon, ScaleMode.ScaleToFit, true);
+            float fishX = Mathf.Lerp(track.x + 34f, track.xMax - 34f, fishPosition);
+            var iconRect = new Rect(fishX - 34f, track.y - 3f, 68f, 68f);
+            FishingUiTheme.DrawTextureOrSwatch(iconRect, currentFish.Icon, currentFish.RarityColor);
         }
 
         float barWidth = track.width * .46f;
-        Rect progressBar = new(track.x, track.y + 78f, barWidth, 24f);
-        Rect escapeBar = new(track.xMax - barWidth, track.y + 78f, barWidth, 24f);
-        GUI.color = new Color(.08f, .10f, .08f, .82f);
-        GUI.DrawTexture(progressBar, Texture2D.whiteTexture);
-        GUI.DrawTexture(escapeBar, Texture2D.whiteTexture);
-        GUI.color = new Color(.30f, .82f, .32f, 1f);
-        GUI.DrawTexture(new Rect(progressBar.x, progressBar.y, progressBar.width * progress, progressBar.height), Texture2D.whiteTexture);
-        GUI.color = new Color(.90f, .28f, .22f, 1f);
-        GUI.DrawTexture(new Rect(escapeBar.xMax - escapeBar.width * escape, escapeBar.y, escapeBar.width * escape, escapeBar.height), Texture2D.whiteTexture);
-        GUI.color = Color.white;
-        GUI.Label(new Rect(progressBar.x, progressBar.y + 28f, progressBar.width, 34f), "포획 " + Mathf.RoundToInt(progress * 100) + "%", overlayStyle);
-        GUI.Label(new Rect(escapeBar.x, escapeBar.y + 28f, escapeBar.width, 34f), "도주 " + Mathf.RoundToInt(escape * 100) + "%", overlayStyle);
+        Rect progressBar = new(track.x, track.y + 78f, barWidth, 22f);
+        Rect escapeBar = new(track.xMax - barWidth, track.y + 78f, barWidth, 22f);
+        FishingUiTheme.DrawBar(progressBar, progress, FishingUiTheme.AccentBright);
+        FishingUiTheme.DrawBar(escapeBar, escape, FishingUiTheme.Danger);
+        GUI.Label(new Rect(progressBar.x, progressBar.y + 24f, progressBar.width, 28f), "포획 " + Mathf.RoundToInt(progress * 100) + "%", FishingUiTheme.SmallCentered);
+        GUI.Label(new Rect(escapeBar.x, escapeBar.y + 24f, escapeBar.width, 28f), "도주 " + Mathf.RoundToInt(escape * 100) + "%", FishingUiTheme.SmallCentered);
     }
 
-    private void EnsureOverlayStyle()
+    private void DrawResultWindow(float screenWidth, float screenHeight)
     {
-        if (overlayStyle != null) return;
-        overlayStyle = new GUIStyle(GUI.skin.label)
+        float width = Mathf.Min(620f, screenWidth - 40f);
+        float height = 260f;
+        var panel = new Rect((screenWidth - width) * .5f, (screenHeight - height) * .5f, width, height);
+        FishingUiTheme.DrawPanel(panel);
+        FishingUiTheme.ColoredLabel(new Rect(panel.x + 24f, panel.y + 18f, panel.width - 48f, 42f),
+            resultSuccess ? "낚시 성공!" : "낚시 실패", FishingUiTheme.Title,
+            resultSuccess ? FishingUiTheme.AccentBright : FishingUiTheme.Danger);
+        FishingUiTheme.DrawDivider(new Rect(panel.x + 26f, panel.y + 65f, panel.width - 52f, 2f));
+        if (resultSuccess && resultFish?.Icon != null)
+            FishingUiTheme.DrawTextureOrSwatch(new Rect(panel.x + 34f, panel.y + 80f, 104f, 104f), resultFish.Icon, resultFish.RarityColor);
+        GUI.Label(new Rect(panel.x + (resultSuccess ? 155f : 30f), panel.y + 76f,
+            panel.width - (resultSuccess ? 185f : 60f), 104f), resultDetails, FishingUiTheme.BodyCentered);
+        if (FishingUiTheme.StyledButton(new Rect(panel.x + panel.width * .5f - 72f, panel.yMax - 58f, 144f, 40f), "확인", primary: true))
         {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 20,
-            normal = { textColor = Color.white }
-        };
+            resultTimer = 0f;
+            resultFish = null;
+            resultDetails = "";
+        }
     }
 
     private float SpotDifficulty => activeFishingSpot != null ? Mathf.Max(.5f, activeFishingSpot.DifficultyMultiplier) : 1f;
     private float EffectiveSpotDifficulty => Mathf.Lerp(1f, SpotDifficulty, .55f);
     private float AdjustedDirectionInterval => currentFish != null ? currentFish.DirectionChangeInterval / EffectiveSpotDifficulty * 1.15f : 1f;
-    private float AdjustedReelZoneSize => currentFish != null ? Mathf.Clamp(currentFish.ReelZoneSize * 1.25f / Mathf.Sqrt(EffectiveSpotDifficulty), .18f, .42f) : .24f;
+    private FishingRodDefinition EquippedRod => rodInventory?.GetEquipped(rodCatalog);
+    private float AdjustedReelZoneSize
+    {
+        get
+        {
+            if (currentFish == null) return .24f;
+            float rodMultiplier = EquippedRod != null ? EquippedRod.CaptureZoneMultiplier : 1f;
+            return Mathf.Clamp(currentFish.ReelZoneSize * 1.25f * rodMultiplier / Mathf.Sqrt(EffectiveSpotDifficulty), .18f, .48f);
+        }
+    }
 }

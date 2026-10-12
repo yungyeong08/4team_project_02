@@ -26,7 +26,7 @@ public sealed class PlayerWallet : MonoBehaviour
     public void AddMoney(int amount)
     {
         if (amount <= 0) return;
-        balance += amount;
+        balance = (int)System.Math.Min(int.MaxValue, (long)balance + amount);
         BalanceChanged?.Invoke(balance);
     }
 }

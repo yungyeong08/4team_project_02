@@ -11,14 +11,11 @@ public sealed class FishMarketSystem : MonoBehaviour
     private PlayerWallet wallet;
     private FishInventory inventory;
     private List<FishDefinition> catalog;
+    private System.Func<bool> inputBlocked;
     private Vector2 scrollPosition;
     private bool isOpen;
     private bool isPlayerInRange;
     private string statusMessage = "판매할 물고기를 선택해 주세요.";
-    private GUIStyle titleStyle;
-    private GUIStyle centeredStyle;
-    private GUIStyle nameStyle;
-    private GUIStyle messageStyle;
     private float logicalScreenWidth;
     private float logicalScreenHeight;
 
@@ -39,9 +36,12 @@ public sealed class FishMarketSystem : MonoBehaviour
         RefreshRange();
     }
 
+    public void SetInputBlocker(System.Func<bool> blocker) => inputBlocked = blocker;
+
     private void Update()
     {
         RefreshRange();
+        if (!isOpen && inputBlocked != null && inputBlocked()) return;
         if (isOpen)
         {
             if (Input.GetKeyDown(KeyCode.Escape)) CloseShop();
@@ -90,7 +90,7 @@ public sealed class FishMarketSystem : MonoBehaviour
             return false;
         }
 
-        int earned = soldCount * fish.SalePrice;
+        int earned = SafeSaleValue(soldCount, fish.SalePrice);
         wallet.AddMoney(earned);
         statusMessage = $"{fish.DisplayName} {soldCount}마리 판매 완료!  +{earned:N0} G";
         return true;
@@ -107,8 +107,9 @@ public sealed class FishMarketSystem : MonoBehaviour
         int earned = 0;
         foreach (FishDefinition fish in catalog)
         {
+            if (fish == null) continue;
             int soldCount = inventory.RemoveAll(fish.Id);
-            earned += soldCount * fish.SalePrice;
+            earned = (int)System.Math.Min(int.MaxValue, (long)earned + SafeSaleValue(soldCount, fish.SalePrice));
         }
 
         if (earned <= 0)
@@ -127,7 +128,11 @@ public sealed class FishMarketSystem : MonoBehaviour
         if (catalog == null || inventory == null) return 0;
         int total = 0;
         foreach (FishDefinition fish in catalog)
-            total += inventory.GetCount(fish.Id) * fish.SalePrice;
+        {
+            if (fish == null) continue;
+            total = (int)System.Math.Min(int.MaxValue,
+                (long)total + SafeSaleValue(inventory.GetCount(fish.Id), fish.SalePrice));
+        }
         return total;
     }
 
@@ -139,11 +144,12 @@ public sealed class FishMarketSystem : MonoBehaviour
         GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
         logicalScreenWidth = Screen.width / uiScale;
         logicalScreenHeight = Screen.height / uiScale;
-        EnsureStyles();
+        FishingUiTheme.Ensure();
 
         if (!isOpen)
         {
-            if (isPlayerInRange) DrawInteractionPrompt();
+            bool blocked = inputBlocked != null && inputBlocked();
+            if (isPlayerInRange && !blocked) DrawInteractionPrompt();
             GUI.matrix = previousMatrix;
             return;
         }
@@ -155,31 +161,29 @@ public sealed class FishMarketSystem : MonoBehaviour
     private void DrawInteractionPrompt()
     {
         var prompt = new Rect(logicalScreenWidth * .5f - 150f, logicalScreenHeight - 94f, 300f, 46f);
-        GUI.Box(prompt, "");
-        GUI.Label(prompt, "F - 물고기 판매", centeredStyle);
+        FishingUiTheme.DrawPanel(prompt, true);
+        GUI.Label(prompt, "F  -  물고기 판매", FishingUiTheme.BodyCentered);
     }
 
     private void DrawMarketWindow()
     {
-        Color oldColor = GUI.color;
-        GUI.color = new Color(0f, 0f, 0f, .64f);
-        GUI.Box(new Rect(0f, 0f, logicalScreenWidth, logicalScreenHeight), "");
-        GUI.color = oldColor;
+        FishingUiTheme.DrawDim(new Rect(0f, 0f, logicalScreenWidth, logicalScreenHeight));
 
         float width = Mathf.Min(900f, logicalScreenWidth - 30f);
         float height = Mathf.Min(650f, logicalScreenHeight - 30f);
         var panel = new Rect((logicalScreenWidth - width) * .5f, (logicalScreenHeight - height) * .5f, width, height);
-        GUI.Box(panel, "");
+        FishingUiTheme.DrawPanel(panel);
 
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 14f, panel.width - 100f, 42f), "물고기 판매 상점", titleStyle);
-        if (GUI.Button(new Rect(panel.xMax - 52f, panel.y + 14f, 36f, 32f), "X")) CloseShop();
-        GUI.Label(new Rect(panel.x + 25f, panel.y + 58f, 250f, 28f), $"보유 금액: {(wallet != null ? wallet.Balance : 0):N0} G", nameStyle);
+        GUI.Label(new Rect(panel.x + 24f, panel.y + 14f, panel.width - 100f, 42f), "물고기 판매 상점", FishingUiTheme.Title);
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 55f, panel.y + 14f, 38f, 34f), "×", danger: true)) CloseShop();
+        FishingUiTheme.DrawDivider(new Rect(panel.x + 22f, panel.y + 60f, panel.width - 44f, 2f));
+        GUI.Label(new Rect(panel.x + 25f, panel.y + 66f, 250f, 28f), $"보유 금액  {(wallet != null ? wallet.Balance : 0):N0} G", FishingUiTheme.Heading);
 
-        var viewRect = new Rect(panel.x + 20f, panel.y + 92f, panel.width - 40f, panel.height - 205f);
+        var viewRect = new Rect(panel.x + 20f, panel.y + 102f, panel.width - 40f, panel.height - 215f);
         int visibleCount = 0;
         if (catalog != null)
             foreach (FishDefinition fish in catalog)
-                if (inventory != null && inventory.GetCount(fish.Id) > 0) visibleCount++;
+                if (fish != null && inventory != null && inventory.GetCount(fish.Id) > 0) visibleCount++;
 
         float contentHeight = Mathf.Max(viewRect.height - 4f, visibleCount * 112f);
         scrollPosition = GUI.BeginScrollView(viewRect, scrollPosition, new Rect(0f, 0f, viewRect.width - 18f, contentHeight));
@@ -188,64 +192,39 @@ public sealed class FishMarketSystem : MonoBehaviour
         {
             foreach (FishDefinition fish in catalog)
             {
+                if (fish == null) continue;
                 int count = inventory != null ? inventory.GetCount(fish.Id) : 0;
                 if (count <= 0) continue;
                 DrawFishRow(fish, count, new Rect(2f, rowIndex * 112f, viewRect.width - 24f, 100f));
                 rowIndex++;
             }
         }
-        if (rowIndex == 0) GUI.Label(new Rect(0f, 50f, viewRect.width - 20f, 40f), "판매할 물고기가 없습니다.", centeredStyle);
+        if (rowIndex == 0) GUI.Label(new Rect(0f, 50f, viewRect.width - 20f, 40f), "판매할 물고기가 없습니다.", FishingUiTheme.BodyCentered);
         GUI.EndScrollView();
 
         int total = CalculateTotalSaleValue();
-        GUI.Label(new Rect(panel.x + 24f, panel.yMax - 102f, panel.width - 210f, 32f), $"전체 판매 금액: {total:N0} G", nameStyle);
-        bool oldEnabled = GUI.enabled;
-        GUI.enabled = total > 0;
-        if (GUI.Button(new Rect(panel.xMax - 170f, panel.yMax - 106f, 145f, 38f), "모두 팔기")) SellAllFish();
-        GUI.enabled = oldEnabled;
-        GUI.Label(new Rect(panel.x + 22f, panel.yMax - 64f, panel.width - 44f, 26f), statusMessage, messageStyle);
-        GUI.Label(new Rect(panel.x + 22f, panel.yMax - 34f, panel.width - 44f, 22f), "ESC 또는 오른쪽 위 X 버튼으로 닫기", centeredStyle);
+        GUI.Label(new Rect(panel.x + 24f, panel.yMax - 102f, panel.width - 210f, 32f), $"전체 판매 금액  {total:N0} G", FishingUiTheme.Heading);
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 170f, panel.yMax - 106f, 145f, 40f), "모두 팔기", primary: true, enabled: total > 0)) SellAllFish();
+        FishingUiTheme.ColoredLabel(new Rect(panel.x + 22f, panel.yMax - 64f, panel.width - 44f, 26f),
+            statusMessage, FishingUiTheme.BodyCentered, FishingUiTheme.Gold);
+        GUI.Label(new Rect(panel.x + 22f, panel.yMax - 34f, panel.width - 44f, 22f), "ESC 또는 오른쪽 위 × 버튼으로 닫기", FishingUiTheme.SmallCentered);
     }
 
     private void DrawFishRow(FishDefinition fish, int count, Rect row)
     {
-        GUI.Box(row, "");
-        if (fish.Icon != null) GUI.DrawTexture(new Rect(row.x + 12f, row.y + 12f, 76f, 76f), fish.Icon, ScaleMode.ScaleToFit, true);
-        GUI.Label(new Rect(row.x + 102f, row.y + 8f, 230f, 27f), fish.DisplayName, nameStyle);
-        GUI.Label(new Rect(row.x + 102f, row.y + 36f, 230f, 24f), $"등급: {fish.RarityName}");
-        GUI.Label(new Rect(row.x + 102f, row.y + 62f, 180f, 24f), $"보유: {count}마리");
-        GUI.Label(new Rect(row.x + 315f, row.y + 17f, 190f, 24f), $"개당: {fish.SalePrice:N0} G");
-        GUI.Label(new Rect(row.x + 315f, row.y + 52f, 190f, 24f), $"총액: {count * fish.SalePrice:N0} G", nameStyle);
-        if (GUI.Button(new Rect(row.xMax - 112f, row.y + 30f, 94f, 40f), "판매")) SellFish(fish.Id);
+        if (fish == null) return;
+        FishingUiTheme.DrawCard(row);
+        FishingUiTheme.DrawTextureOrSwatch(new Rect(row.x + 12f, row.y + 12f, 76f, 76f), fish.Icon, fish.RarityColor);
+        GUI.Label(new Rect(row.x + 102f, row.y + 8f, 230f, 27f), fish.DisplayName, FishingUiTheme.Heading);
+        FishingUiTheme.ColoredLabel(new Rect(row.x + 102f, row.y + 36f, 230f, 24f),
+            "등급  " + fish.RarityName, FishingUiTheme.Body, fish.RarityColor);
+        GUI.Label(new Rect(row.x + 102f, row.y + 62f, 180f, 24f), $"보유  {count}마리", FishingUiTheme.Small);
+        GUI.Label(new Rect(row.x + 315f, row.y + 17f, 190f, 24f), $"개당  {fish.SalePrice:N0} G", FishingUiTheme.Body);
+        FishingUiTheme.ColoredLabel(new Rect(row.x + 315f, row.y + 52f, 190f, 24f),
+            $"총액  {SafeSaleValue(count, fish.SalePrice):N0} G", FishingUiTheme.Heading, FishingUiTheme.Gold);
+        if (FishingUiTheme.StyledButton(new Rect(row.xMax - 112f, row.y + 30f, 94f, 42f), "판매", primary: true)) SellFish(fish.Id);
     }
 
-    private void EnsureStyles()
-    {
-        if (titleStyle != null) return;
-        titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 25,
-            fontStyle = FontStyle.Bold,
-            normal = { textColor = Color.white }
-        };
-        centeredStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleCenter,
-            fontSize = 15,
-            normal = { textColor = Color.white }
-        };
-        nameStyle = new GUIStyle(GUI.skin.label)
-        {
-            alignment = TextAnchor.MiddleLeft,
-            fontSize = 17,
-            fontStyle = FontStyle.Bold,
-            normal = { textColor = Color.white }
-        };
-        messageStyle = new GUIStyle(centeredStyle)
-        {
-            fontStyle = FontStyle.Bold,
-            normal = { textColor = new Color(.95f, .82f, .3f) }
-        };
-    }
+    private static int SafeSaleValue(int count, int price)
+        => (int)System.Math.Min(int.MaxValue, System.Math.Max(0L, (long)Mathf.Max(0, count) * Mathf.Max(0, price)));
 }

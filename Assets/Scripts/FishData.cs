@@ -28,6 +28,8 @@ public sealed class FishDefinition
     [Min(0f)] public float CatchRate;
     [Min(0f)] public float EscapeRate;
 
+    public FishDefinition() { }
+
     public FishDefinition(
         string id, string displayName, Texture2D icon, FishRarity rarity, int salePrice,
         float reelZoneSize, float movementAcceleration, float maxSpeed,
@@ -47,14 +49,30 @@ public sealed class FishDefinition
         EscapeRate = escapeRate;
     }
 
-    public string RarityName => Rarity switch
+    public string RarityName => FishDataPresentation.GetRarityName(Rarity);
+    public Color RarityColor => FishDataPresentation.GetRarityColor(Rarity);
+}
+
+public static class FishDataPresentation
+{
+    public static string GetRarityName(FishRarity rarity) => rarity switch
     {
         FishRarity.Common => "일반",
         FishRarity.Uncommon => "고급",
         FishRarity.Rare => "희귀",
         FishRarity.Epic => "영웅",
         FishRarity.Legendary => "전설",
-        _ => Rarity.ToString()
+        _ => rarity.ToString()
+    };
+
+    public static Color GetRarityColor(FishRarity rarity) => rarity switch
+    {
+        FishRarity.Common => new Color(.72f, .76f, .72f),
+        FishRarity.Uncommon => new Color(.38f, .85f, .43f),
+        FishRarity.Rare => new Color(.35f, .65f, 1f),
+        FishRarity.Epic => new Color(.75f, .42f, .95f),
+        FishRarity.Legendary => new Color(1f, .72f, .20f),
+        _ => Color.white
     };
 }
 

@@ -53,7 +53,7 @@ public sealed class FishingSpotDefinition
 
     public float GetWeight(FishRarity rarity)
     {
-        FishRarityWeight entry = RarityWeights?.Find(candidate => candidate.Rarity == rarity);
+        FishRarityWeight entry = RarityWeights?.Find(candidate => candidate != null && candidate.Rarity == rarity);
         return entry != null ? Mathf.Max(0f, entry.Weight) : 0f;
     }
 
@@ -63,24 +63,36 @@ public sealed class FishingSpotDefinition
 
         float totalWeight = 0f;
         for (int i = 0; i < catalog.Count; i++) totalWeight += GetSpeciesWeight(catalog, i);
-        if (totalWeight <= 0f) return catalog[UnityEngine.Random.Range(0, catalog.Count)];
+        if (totalWeight <= 0f)
+        {
+            int start = UnityEngine.Random.Range(0, catalog.Count);
+            for (int offset = 0; offset < catalog.Count; offset++)
+            {
+                FishDefinition fallback = catalog[(start + offset) % catalog.Count];
+                if (fallback != null) return fallback;
+            }
+            return null;
+        }
 
         float roll = UnityEngine.Random.value * totalWeight;
         for (int i = 0; i < catalog.Count; i++)
         {
             roll -= GetSpeciesWeight(catalog, i);
-            if (roll <= 0f) return catalog[i];
+            if (roll <= 0f && catalog[i] != null) return catalog[i];
         }
 
-        return catalog[catalog.Count - 1];
+        for (int i = catalog.Count - 1; i >= 0; i--)
+            if (catalog[i] != null && GetSpeciesWeight(catalog, i) > 0f) return catalog[i];
+        return null;
     }
 
     private float GetSpeciesWeight(IReadOnlyList<FishDefinition> catalog, int index)
     {
         FishDefinition fish = catalog[index];
+        if (fish == null) return 0f;
         int speciesInRarity = 0;
         for (int i = 0; i < catalog.Count; i++)
-            if (catalog[i].Rarity == fish.Rarity) speciesInRarity++;
+            if (catalog[i] != null && catalog[i].Rarity == fish.Rarity) speciesInRarity++;
 
         return speciesInRarity > 0 ? GetWeight(fish.Rarity) / speciesInRarity : 0f;
     }

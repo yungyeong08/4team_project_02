@@ -1,0 +1,116 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b9f5ab0ea9b4d40b85049706d01e4c2, type: 3}
+  m_Name: FishingBalanceConfig
+  m_EditorClassIdentifier: Assembly-CSharp::FishingBalanceConfig
+  Fish:
+  - Id: common_carp
+    DisplayName: "\uC789\uC5B4"
+    Icon: {fileID: 2800000, guid: 6e0024617f83eef49a05a69231d6a293, type: 3}
+    Rarity: 0
+    SalePrice: 200
+    ReelZoneSize: 0.28
+    MovementAcceleration: 0.16
+    MaxSpeed: 0.24
+    DirectionChangeInterval: 1.8
+    DirectionImpulse: 0.08
+    CatchRate: 0.34
+    EscapeRate: 0.12
+  - Id: atlantic_salmon
+    DisplayName: "\uB300\uC11C\uC591 \uC5F0\uC5B4"
+    Icon: {fileID: 2800000, guid: 1c5cf676a4f3f764fa6efa191422201f, type: 3}
+    Rarity: 1
+    SalePrice: 450
+    ReelZoneSize: 0.22
+    MovementAcceleration: 0.28
+    MaxSpeed: 0.36
+    DirectionChangeInterval: 1.15
+    DirectionImpulse: 0.15
+    CatchRate: 0.27
+    EscapeRate: 0.18
+  - Id: northern_pike
+    DisplayName: "\uB178\uB358 \uD30C\uC774\uD06C"
+    Icon: {fileID: 2800000, guid: 3ba9f28a56e4c164ea512b8012ad0734, type: 3}
+    Rarity: 2
+    SalePrice: 900
+    ReelZoneSize: 0.16
+    MovementAcceleration: 0.43
+    MaxSpeed: 0.5
+    DirectionChangeInterval: 0.68
+    DirectionImpulse: 0.24
+    CatchRate: 0.21
+    EscapeRate: 0.25
+  - Id: golden_salmon
+    DisplayName: "\uD669\uAE08 \uC5F0\uC5B4"
+    Icon: {fileID: 2800000, guid: 1c5cf676a4f3f764fa6efa191422201f, type: 3}
+    Rarity: 3
+    SalePrice: 1800
+    ReelZoneSize: 0.15
+    MovementAcceleration: 0.48
+    MaxSpeed: 0.56
+    DirectionChangeInterval: 0.55
+    DirectionImpulse: 0.26
+    CatchRate: 0.24
+    EscapeRate: 0.25
+  - Id: ancient_pike
+    DisplayName: "\uACE0\uB300 \uD30C\uC774\uD06C"
+    Icon: {fileID: 2800000, guid: 3ba9f28a56e4c164ea512b8012ad0734, type: 3}
+    Rarity: 4
+    SalePrice: 3200
+    ReelZoneSize: 0.12
+    MovementAcceleration: 0.6
+    MaxSpeed: 0.68
+    DirectionChangeInterval: 0.42
+    DirectionImpulse: 0.34
+    CatchRate: 0.2
+    EscapeRate: 0.3
+  Rods:
+  - Id: basic_rod
+    DisplayName: "\uB0A1\uC740 \uB09A\uC2EF\uB300"
+    Rarity: 0
+    Price: 0
+    Icon: {fileID: 0}
+    CaptureZoneMultiplier: 1
+    FishSpeedMultiplier: 1
+    CatchRateMultiplier: 1
+  - Id: sturdy_rod
+    DisplayName: "\uD2BC\uD2BC\uD55C \uB09A\uC2EF\uB300"
+    Rarity: 1
+    Price: 500
+    Icon: {fileID: 0}
+    CaptureZoneMultiplier: 1.08
+    FishSpeedMultiplier: 0.96
+    CatchRateMultiplier: 1.07
+  - Id: river_rod
+    DisplayName: "\uAC15\uCCA0 \uB09A\uC2EF\uB300"
+    Rarity: 2
+    Price: 1400
+    Icon: {fileID: 0}
+    CaptureZoneMultiplier: 1.16
+    FishSpeedMultiplier: 0.91
+    CatchRateMultiplier: 1.14
+  - Id: master_rod
+    DisplayName: "\uC7A5\uC778\uC758 \uB09A\uC2EF\uB300"
+    Rarity: 3
+    Price: 3000
+    Icon: {fileID: 0}
+    CaptureZoneMultiplier: 1.24
+    FishSpeedMultiplier: 0.86
+    CatchRateMultiplier: 1.22
+  - Id: legend_rod
+    DisplayName: "\uBCC4\uBE5B \uB09A\uC2EF\uB300"
+    Rarity: 4
+    Price: 6500
+    Icon: {fileID: 0}
+    CaptureZoneMultiplier: 1.32
+    FishSpeedMultiplier: 0.81
+    CatchRateMultiplier: 1.3
