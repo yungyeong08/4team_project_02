@@ -23,6 +23,7 @@ public sealed class FishingShopSystem : MonoBehaviour
     public bool IsPlayerInRange => isPlayerInRange;
     public int ProductCount => rodCatalog?.Count ?? 0;
     public string StatusMessage => statusMessage;
+    public event System.Action<string> RodPurchased;
 
     public void Setup(
         PixelCharacter playerCharacter,
@@ -107,6 +108,7 @@ public sealed class FishingShopSystem : MonoBehaviour
         }
 
         statusMessage = product.DisplayName + " 구매 완료! 자동으로 장착했습니다.";
+        RodPurchased?.Invoke(product.Id);
         return true;
     }
 
@@ -134,9 +136,8 @@ public sealed class FishingShopSystem : MonoBehaviour
 
     private void DrawInteractionPrompt()
     {
-        var prompt = new Rect(logicalScreenWidth * .5f - 145f, logicalScreenHeight - 94f, 290f, 46f);
-        FishingUiTheme.DrawPanel(prompt, true);
-        GUI.Label(prompt, "F  -  낚시 상점 열기", FishingUiTheme.BodyCentered);
+        var prompt = new Rect(logicalScreenWidth * .5f - 158f, logicalScreenHeight - 104f, 316f, 56f);
+        FishingUiTheme.DrawInteractionPrompt(prompt, "F", "낚시 상점 열기");
     }
 
     private void DrawShopWindow()
@@ -148,19 +149,20 @@ public sealed class FishingShopSystem : MonoBehaviour
         var panel = new Rect((logicalScreenWidth - width) * .5f, (logicalScreenHeight - height) * .5f, width, height);
         FishingUiTheme.DrawPanel(panel);
 
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 15f, panel.width - 96f, 42f), "낚시 상점", FishingUiTheme.Title);
-        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 55f, panel.y + 14f, 38f, 34f), "×", danger: true)) CloseShop();
-        FishingUiTheme.DrawDivider(new Rect(panel.x + 22f, panel.y + 60f, panel.width - 44f, 2f));
+        FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 180f, panel.y - 14f, panel.width - 360f, 56f), "낚시 상점");
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 15f, 40f, 36f), "×", danger: true)) CloseShop();
 
         int balance = wallet != null ? wallet.Balance : 0;
-        GUI.Label(new Rect(panel.x + 25f, panel.y + 66f, panel.width - 50f, 28f), $"보유 금액  {balance:N0} G", FishingUiTheme.Heading);
+        FishingUiTheme.DrawMoneyChip(new Rect(panel.x + 24f, panel.y + 59f, 190f, 40f), balance);
+        GUI.Label(new Rect(panel.x + 228f, panel.y + 61f, panel.width - 252f, 36f),
+            "더 좋은 낚싯대로 어려운 물고기에 도전하세요", FishingUiTheme.Small);
 
-        var viewRect = new Rect(panel.x + 20f, panel.y + 102f, panel.width - 40f, panel.height - 168f);
-        int productCount = rodCatalog != null ? rodCatalog.Count : 0;
+        var viewRect = new Rect(panel.x + 20f, panel.y + 108f, panel.width - 40f, panel.height - 174f);
+        int productCount = rodCatalog != null ? Mathf.Min(2, rodCatalog.Count) : 0;
         float contentHeight = Mathf.Max(viewRect.height - 4f, productCount * 126f);
         scrollPosition = GUI.BeginScrollView(viewRect, scrollPosition, new Rect(0f, 0f, viewRect.width - 18f, contentHeight));
         if (rodCatalog != null)
-            for (int i = 0; i < rodCatalog.Count; i++)
+            for (int i = 0; i < productCount; i++)
                 DrawProduct(rodCatalog[i], new Rect(2f, i * 126f, viewRect.width - 24f, 114f));
         GUI.EndScrollView();
 
@@ -172,17 +174,17 @@ public sealed class FishingShopSystem : MonoBehaviour
     private void DrawProduct(FishingRodDefinition product, Rect row)
     {
         if (product == null) return;
-        FishingUiTheme.DrawCard(row, false);
+        bool owned = inventory != null && inventory.Owns(product.Id);
+        bool equipped = inventory != null && inventory.EquippedRodId == product.Id;
+        FishingUiTheme.DrawSlot(row, product.RarityColor, equipped);
         Rect iconRect = new(row.x + 14f, row.y + 18f, 64f, 64f);
         FishingUiTheme.DrawTextureOrSwatch(iconRect, product.Icon, product.RarityColor);
         GUI.Label(new Rect(row.x + 92f, row.y + 8f, row.width - 252f, 28f), product.DisplayName, FishingUiTheme.Heading);
-        FishingUiTheme.ColoredLabel(new Rect(row.x + 92f, row.y + 37f, 160f, 24f), product.RarityName, FishingUiTheme.Body, product.RarityColor);
+        FishingUiTheme.DrawBadge(new Rect(row.x + 92f, row.y + 37f, 118f, 25f), product.RarityName, product.RarityColor);
         GUI.Label(new Rect(row.x + 92f, row.y + 63f, row.width - 252f, 40f), product.StatSummary, FishingUiTheme.Small);
         FishingUiTheme.ColoredLabel(new Rect(row.xMax - 138f, row.y + 12f, 120f, 24f),
             $"{product.Price:N0} G", FishingUiTheme.BodyCentered, FishingUiTheme.Gold);
 
-        bool owned = inventory != null && inventory.Owns(product.Id);
-        bool equipped = inventory != null && inventory.EquippedRodId == product.Id;
         string buttonText = equipped ? "장착 중" : owned ? "보유 중" : product.Price <= 0 ? "기본 지급" : "구매";
         if (FishingUiTheme.StyledButton(new Rect(row.xMax - 138f, row.y + 52f, 120f, 40f), buttonText,
             primary: !owned && product.Price > 0, enabled: !owned && product.Price > 0))

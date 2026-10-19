@@ -7,17 +7,34 @@ public sealed class FishingMapConfig : ScriptableObject
 {
     public Vector2 MapSize = new(44f, 30f);
     public Vector2 PlayerStart = new(0f, -10f);
-    public Vector2 FishingShopPosition = new(3.2f, -8f);
-    public Vector2 FishMarketPosition = new(-3.2f, -8f);
+    public Vector2 FishingShopPosition = new(3f, -7.5f);
+    public Vector2 FishMarketPosition = new(-1.5f, -5.5f);
     public List<FishingSpotDefinition> FishingSpots = new();
 
     public void ApplyDefaults()
     {
         MapSize = new Vector2(44f, 30f);
         PlayerStart = new Vector2(0f, -10f);
-        FishingShopPosition = new Vector2(3.2f, -8f);
-        FishMarketPosition = new Vector2(-3.2f, -8f);
+        FishingShopPosition = new Vector2(3f, -7.5f);
+        FishMarketPosition = new Vector2(-1.5f, -5.5f);
         FishingSpots = CreateDefaultSpots();
+    }
+
+    public bool EnsureFirstAreaLayout()
+    {
+        bool changed = false;
+        // Migrate the old test-map shop positions that overlapped the beginner fishing interaction.
+        if (Vector2.Distance(FishingShopPosition, new Vector2(3.2f, -8f)) < .05f)
+        {
+            FishingShopPosition = new Vector2(3f, -7.5f);
+            changed = true;
+        }
+        if (Vector2.Distance(FishMarketPosition, new Vector2(-3.2f, -8f)) < .05f)
+        {
+            FishMarketPosition = new Vector2(-1.5f, -5.5f);
+            changed = true;
+        }
+        return changed;
     }
 
     public static List<FishingSpotDefinition> CreateDefaultSpots()

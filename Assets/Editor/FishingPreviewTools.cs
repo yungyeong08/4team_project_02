@@ -8,10 +8,11 @@ public static class FishingPreviewTools
 {
     private const string FishingScenePath = "Assets/Scenes/FishingDemo.unity";
     private const string SmokeTestSessionKey = "Fishing.PlayModeSmokeTest";
-    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation";
+    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.EarlyGameV2";
 
     private const string MapConfigPath = "Assets/Resources/Data/FishingMapConfig.asset";
     private const string BalanceConfigPath = "Assets/Resources/Data/FishingBalanceConfig.asset";
+    private const string QuestConfigPath = "Assets/Resources/Data/EarlyGameQuestConfig.asset";
 
     [InitializeOnLoadMethod]
     private static void EnsureDataAssetsAfterCompile()
@@ -28,6 +29,7 @@ public static class FishingPreviewTools
         }
         EnsureMapConfig();
         EnsureBalanceConfig();
+        EnsureQuestConfig();
         if (!SessionState.GetBool(ProgressionValidationSessionKey, false))
         {
             ValidateProgressionSystems();
@@ -61,8 +63,11 @@ public static class FishingPreviewTools
     public static void ValidateProgressionSystems()
     {
         FishingBalanceConfig balance = EnsureBalanceConfig();
+        EarlyGameQuestConfig questConfig = EnsureQuestConfig();
         if (balance.Fish == null || balance.Fish.Count == 0) throw new System.InvalidOperationException("Fish catalog is empty.");
         if (balance.Rods == null || balance.Rods.Count < 2) throw new System.InvalidOperationException("Rod catalog needs a default rod and purchasable upgrades.");
+        if (questConfig.Quests == null || questConfig.Quests.Count != 5)
+            throw new System.InvalidOperationException("The first-area quest line must contain five quests.");
 
         var fishIds = new System.Collections.Generic.HashSet<string>();
         foreach (FishDefinition fish in balance.Fish)
@@ -98,10 +103,18 @@ public static class FishingPreviewTools
                 new() { FishId = balance.Fish[0].Id, Count = 2, LifetimeCaught = 5, Discovered = true }
             },
             PlayerX = 3.5f,
-            PlayerY = -2f
+            PlayerY = -2f,
+            EarlyGameProgress = new EarlyGameProgressSaveData
+            {
+                TutorialStep = (int)EarlyTutorialStep.ReachFishMarket,
+                ActiveQuestId = "first_sale",
+                QuestProgress = 0,
+                CompletedQuestIds = new System.Collections.Generic.List<string> { "first_catch", "beginner_angler" }
+            }
         };
         FishingGameSaveData restored = JsonUtility.FromJson<FishingGameSaveData>(JsonUtility.ToJson(saveRoundTrip));
-        if (restored == null || restored.Money != 777 || restored.FishProgress.Count != 1 || restored.FishProgress[0].LifetimeCaught != 5)
+        if (restored == null || restored.Money != 777 || restored.FishProgress.Count != 1 || restored.FishProgress[0].LifetimeCaught != 5 ||
+            restored.EarlyGameProgress == null || restored.EarlyGameProgress.ActiveQuestId != "first_sale")
             throw new System.InvalidOperationException("Save data JSON round trip failed.");
 
         var validationObject = new GameObject("Progression Validation (Temporary)");
@@ -121,13 +134,25 @@ public static class FishingPreviewTools
                 throw new System.InvalidOperationException("Fish inventory and codex progress are not sharing data.");
             if (inventory.RemoveAll(fishId) != 3 || inventory.GetCount(fishId) != 0 || inventory.GetLifetimeCaught(fishId) != 3)
                 throw new System.InvalidOperationException("Selling must remove owned fish without erasing codex history.");
+
+            PlayerWallet wallet = validationObject.AddComponent<PlayerWallet>();
+            wallet.Initialize(0);
+            EarlyGameQuestSystem quests = validationObject.AddComponent<EarlyGameQuestSystem>();
+            quests.Setup(validationObject.transform, wallet, FishingMapConfig.CreateDefaultSpots()[0], null, null);
+            quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, FishingRodCatalog.DefaultRodId);
+            for (int i = 0; i < 3; i++) quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, FishingRodCatalog.DefaultRodId);
+            quests.NotifyFishSold(1);
+            quests.NotifyRodPurchased(EarlyGameQuestSystem.UpgradeRodId);
+            for (int i = 0; i < 2; i++) quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, EarlyGameQuestSystem.UpgradeRodId);
+            if (!quests.NextRegionReady || quests.ActiveQuest != null || quests.CompletedQuestIds.Count != 5 || wallet.Balance != 950)
+                throw new System.InvalidOperationException("First-area quest chain, rewards, or next-region-ready state failed.");
         }
         finally
         {
             Object.DestroyImmediate(validationObject);
         }
 
-        Debug.Log("PROGRESSION_VALIDATION_OK: shared fish inventory, codex history, rod ownership/equipment, balance, and save-data JSON verified.");
+        Debug.Log("PROGRESSION_VALIDATION_OK: inventory/codex, rod progression, five-quest early-game chain, rewards, and save-data JSON verified.");
     }
 
     public static void RunPlayModeSmokeTest()
@@ -170,19 +195,23 @@ public static class FishingPreviewTools
             FishingRodInventory rodInventory = Object.FindFirstObjectByType<FishingRodInventory>();
             PlayerProgressUI progressUi = Object.FindFirstObjectByType<PlayerProgressUI>();
             GameSaveSystem saveSystem = Object.FindFirstObjectByType<GameSaveSystem>();
-            if (controller == null || shop == null || market == null || fishInventory == null || rodInventory == null || progressUi == null || saveSystem == null)
+            EarlyGameQuestSystem earlyGameQuests = Object.FindFirstObjectByType<EarlyGameQuestSystem>();
+            if (controller == null || shop == null || market == null || fishInventory == null || rodInventory == null ||
+                progressUi == null || saveSystem == null || earlyGameQuests == null)
                 throw new System.InvalidOperationException("One or more progression systems were not created at runtime.");
             if (!rodInventory.Owns(FishingRodCatalog.DefaultRodId) || string.IsNullOrWhiteSpace(rodInventory.EquippedRodId) ||
                 !rodInventory.Owns(rodInventory.EquippedRodId))
                 throw new System.InvalidOperationException("The player does not have a valid equipped fishing rod.");
 
             Vector3 originalPosition = player.transform.position;
-            foreach (FishingSpotDefinition spot in builder.FishingSpots)
+            for (int i = 0; i < builder.FishingSpots.Count; i++)
             {
+                FishingSpotDefinition spot = builder.FishingSpots[i];
                 player.transform.position = spot.ShorePosition;
                 Physics2D.SyncTransforms();
-                if (builder.GetNearestFishingSpot(player.transform.position) != spot)
-                    throw new System.InvalidOperationException($"Interaction check failed for {spot.DisplayName}.");
+                FishingSpotDefinition found = builder.GetNearestFishingSpot(player.transform.position);
+                if ((i == 0 && found != spot) || (i > 0 && found != null))
+                    throw new System.InvalidOperationException($"Early-area access check failed for {spot.DisplayName}.");
             }
 
             player.transform.position = builder.FishingShop.position;
@@ -196,7 +225,7 @@ public static class FishingPreviewTools
             market.CloseShop();
             player.transform.position = originalPosition;
 
-            Debug.Log("PLAYMODE_SMOKE_OK: runtime map, player, UI/progression components, both shops, equipped rod, and all 3 fishing spot interactions verified.");
+            Debug.Log("PLAYMODE_SMOKE_OK: first lake playable, later lakes locked, player/UI/progression components, both shops, and equipped rod verified.");
             SessionState.SetBool(SmokeTestSessionKey, false);
             FinishSmokeTest(0);
         }
@@ -259,7 +288,15 @@ public static class FishingPreviewTools
     private static FishingMapConfig EnsureMapConfig()
     {
         FishingMapConfig config = AssetDatabase.LoadAssetAtPath<FishingMapConfig>(MapConfigPath);
-        if (config != null) return config;
+        if (config != null)
+        {
+            if (config.EnsureFirstAreaLayout())
+            {
+                EditorUtility.SetDirty(config);
+                AssetDatabase.SaveAssets();
+            }
+            return config;
+        }
 
         // Replace an invalid/missing-script config left by an interrupted first import.
         if (AssetDatabase.LoadMainAssetAtPath(MapConfigPath) != null) AssetDatabase.DeleteAsset(MapConfigPath);
@@ -282,7 +319,9 @@ public static class FishingPreviewTools
         FishingBalanceConfig config = AssetDatabase.LoadAssetAtPath<FishingBalanceConfig>(BalanceConfigPath);
         if (config != null)
         {
-            if (config.EnsureValid())
+            bool changed = config.EnsureValid();
+            changed |= ApplyReleasedArt(config);
+            if (changed)
             {
                 EditorUtility.SetDirty(config);
                 AssetDatabase.SaveAssets();
@@ -299,10 +338,84 @@ public static class FishingPreviewTools
 
         config = ScriptableObject.CreateInstance<FishingBalanceConfig>();
         config.ApplyDefaults();
+        ApplyReleasedArt(config);
         AssetDatabase.CreateAsset(config, BalanceConfigPath);
         AssetDatabase.SaveAssets();
         Debug.Log("Created FishingBalanceConfig with editable fish and rod values.");
         return config;
+    }
+
+    private static EarlyGameQuestConfig EnsureQuestConfig()
+    {
+        EarlyGameQuestConfig config = AssetDatabase.LoadAssetAtPath<EarlyGameQuestConfig>(QuestConfigPath);
+        if (config != null)
+        {
+            if (config.EnsureValid())
+            {
+                EditorUtility.SetDirty(config);
+                AssetDatabase.SaveAssets();
+            }
+            return config;
+        }
+
+        config = ScriptableObject.CreateInstance<EarlyGameQuestConfig>();
+        config.ApplyDefaults();
+        AssetDatabase.CreateAsset(config, QuestConfigPath);
+        AssetDatabase.SaveAssets();
+        Debug.Log("Created EarlyGameQuestConfig with the first-lake quest line.");
+        return config;
+    }
+
+    private static bool ApplyReleasedArt(FishingBalanceConfig config)
+    {
+        if (config == null) return false;
+        bool changed = false;
+        changed |= SetFishArt(config, "common_carp", "Assets/Art/Fish/Fish5.png");
+        changed |= SetFishArt(config, "atlantic_salmon", "Assets/Art/Fish/Fish4.png");
+        changed |= SetFishArt(config, "northern_pike", "Assets/Art/Fish/Fish1.png");
+        changed |= SetFishArt(config, "golden_salmon", "Assets/Art/Fish/Fish3.png");
+        changed |= SetFishArt(config, "ancient_pike", "Assets/Art/Fish/Fish2.png");
+        changed |= SetRodArt(config, "basic_rod", "Assets/Art/Fishing rod/fishing rod1.png");
+        changed |= SetRodArt(config, "sturdy_rod", "Assets/Art/Fishing rod/fishing rod2.png");
+        changed |= SetRodArt(config, "river_rod", "Assets/Art/Fishing rod/fishing rod3.png");
+
+        FishDefinition pike = config.Fish?.Find(fish => fish.Id == "northern_pike");
+        if (pike != null && pike.DisplayName == "노던 파이크") { pike.DisplayName = "강꼬치고기"; changed = true; }
+        FishDefinition catfish = config.Fish?.Find(fish => fish.Id == "golden_salmon");
+        if (catfish != null && catfish.DisplayName == "황금 연어")
+        {
+            catfish.DisplayName = "메기"; catfish.Rarity = FishRarity.Common; catfish.SalePrice = 260;
+            catfish.ReelZoneSize = .26f; catfish.MovementAcceleration = .19f; catfish.MaxSpeed = .27f;
+            catfish.DirectionChangeInterval = 1.55f; catfish.DirectionImpulse = .10f; catfish.CatchRate = .32f; catfish.EscapeRate = .13f;
+            changed = true;
+        }
+        FishDefinition eel = config.Fish?.Find(fish => fish.Id == "ancient_pike");
+        if (eel != null && eel.DisplayName == "고대 파이크")
+        {
+            eel.DisplayName = "민물장어"; eel.Rarity = FishRarity.Uncommon; eel.SalePrice = 520;
+            eel.ReelZoneSize = .20f; eel.MovementAcceleration = .31f; eel.MaxSpeed = .39f;
+            eel.DirectionChangeInterval = 1f; eel.DirectionImpulse = .17f; eel.CatchRate = .26f; eel.EscapeRate = .19f;
+            changed = true;
+        }
+        return changed;
+    }
+
+    private static bool SetFishArt(FishingBalanceConfig config, string id, string path)
+    {
+        FishDefinition definition = config.Fish?.Find(fish => fish != null && fish.Id == id);
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (definition == null || texture == null || definition.Icon == texture) return false;
+        definition.Icon = texture;
+        return true;
+    }
+
+    private static bool SetRodArt(FishingBalanceConfig config, string id, string path)
+    {
+        FishingRodDefinition definition = config.Rods?.Find(rod => rod != null && rod.Id == id);
+        Texture2D texture = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+        if (definition == null || texture == null || definition.Icon == texture) return false;
+        definition.Icon = texture;
+        return true;
     }
 }
 #endif

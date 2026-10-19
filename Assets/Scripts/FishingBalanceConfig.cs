@@ -19,6 +19,12 @@ public sealed class FishingBalanceConfig : ScriptableObject
         bool changed = false;
         if (Fish == null || Fish.Count == 0) { Fish = FishCatalog.CreateDefault(); changed = true; }
         if (Rods == null || Rods.Count == 0) { Rods = FishingRodCatalog.CreateDefault(); changed = true; }
+        if (Fish != null)
+            foreach (FishDefinition fish in Fish)
+                if (fish?.Icon != null) fish.Icon.filterMode = FilterMode.Point;
+        if (Rods != null)
+            foreach (FishingRodDefinition rod in Rods)
+                if (rod?.Icon != null) rod.Icon.filterMode = FilterMode.Point;
         return changed;
     }
 

@@ -23,6 +23,7 @@ public sealed class FishMarketSystem : MonoBehaviour
     public bool IsPlayerInRange => isPlayerInRange;
     public string StatusMessage => statusMessage;
     public int TotalSaleValue => CalculateTotalSaleValue();
+    public event System.Action<int, int> FishSold;
 
     public void Setup(
         PixelCharacter playerCharacter, Transform target, PlayerWallet playerWallet,
@@ -93,6 +94,7 @@ public sealed class FishMarketSystem : MonoBehaviour
         int earned = SafeSaleValue(soldCount, fish.SalePrice);
         wallet.AddMoney(earned);
         statusMessage = $"{fish.DisplayName} {soldCount}마리 판매 완료!  +{earned:N0} G";
+        FishSold?.Invoke(soldCount, earned);
         return true;
     }
 
@@ -105,10 +107,12 @@ public sealed class FishMarketSystem : MonoBehaviour
         }
 
         int earned = 0;
+        int totalSold = 0;
         foreach (FishDefinition fish in catalog)
         {
             if (fish == null) continue;
             int soldCount = inventory.RemoveAll(fish.Id);
+            totalSold += soldCount;
             earned = (int)System.Math.Min(int.MaxValue, (long)earned + SafeSaleValue(soldCount, fish.SalePrice));
         }
 
@@ -120,6 +124,7 @@ public sealed class FishMarketSystem : MonoBehaviour
 
         wallet.AddMoney(earned);
         statusMessage = $"모든 물고기 판매 완료!  +{earned:N0} G";
+        FishSold?.Invoke(totalSold, earned);
         return earned;
     }
 
@@ -160,9 +165,8 @@ public sealed class FishMarketSystem : MonoBehaviour
 
     private void DrawInteractionPrompt()
     {
-        var prompt = new Rect(logicalScreenWidth * .5f - 150f, logicalScreenHeight - 94f, 300f, 46f);
-        FishingUiTheme.DrawPanel(prompt, true);
-        GUI.Label(prompt, "F  -  물고기 판매", FishingUiTheme.BodyCentered);
+        var prompt = new Rect(logicalScreenWidth * .5f - 158f, logicalScreenHeight - 104f, 316f, 56f);
+        FishingUiTheme.DrawInteractionPrompt(prompt, "F", "물고기 판매");
     }
 
     private void DrawMarketWindow()
@@ -174,12 +178,13 @@ public sealed class FishMarketSystem : MonoBehaviour
         var panel = new Rect((logicalScreenWidth - width) * .5f, (logicalScreenHeight - height) * .5f, width, height);
         FishingUiTheme.DrawPanel(panel);
 
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 14f, panel.width - 100f, 42f), "물고기 판매 상점", FishingUiTheme.Title);
-        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 55f, panel.y + 14f, 38f, 34f), "×", danger: true)) CloseShop();
-        FishingUiTheme.DrawDivider(new Rect(panel.x + 22f, panel.y + 60f, panel.width - 44f, 2f));
-        GUI.Label(new Rect(panel.x + 25f, panel.y + 66f, 250f, 28f), $"보유 금액  {(wallet != null ? wallet.Balance : 0):N0} G", FishingUiTheme.Heading);
+        FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 230f, panel.y - 14f, panel.width - 460f, 56f), "물고기 판매소");
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 15f, 40f, 36f), "×", danger: true)) CloseShop();
+        FishingUiTheme.DrawMoneyChip(new Rect(panel.x + 24f, panel.y + 59f, 200f, 40f), wallet != null ? wallet.Balance : 0);
+        GUI.Label(new Rect(panel.x + 240f, panel.y + 61f, panel.width - 264f, 36f),
+            "잡은 물고기를 골드로 바꿔 장비를 마련하세요", FishingUiTheme.Small);
 
-        var viewRect = new Rect(panel.x + 20f, panel.y + 102f, panel.width - 40f, panel.height - 215f);
+        var viewRect = new Rect(panel.x + 20f, panel.y + 108f, panel.width - 40f, panel.height - 221f);
         int visibleCount = 0;
         if (catalog != null)
             foreach (FishDefinition fish in catalog)
@@ -213,11 +218,10 @@ public sealed class FishMarketSystem : MonoBehaviour
     private void DrawFishRow(FishDefinition fish, int count, Rect row)
     {
         if (fish == null) return;
-        FishingUiTheme.DrawCard(row);
+        FishingUiTheme.DrawSlot(row, fish.RarityColor);
         FishingUiTheme.DrawTextureOrSwatch(new Rect(row.x + 12f, row.y + 12f, 76f, 76f), fish.Icon, fish.RarityColor);
         GUI.Label(new Rect(row.x + 102f, row.y + 8f, 230f, 27f), fish.DisplayName, FishingUiTheme.Heading);
-        FishingUiTheme.ColoredLabel(new Rect(row.x + 102f, row.y + 36f, 230f, 24f),
-            "등급  " + fish.RarityName, FishingUiTheme.Body, fish.RarityColor);
+        FishingUiTheme.DrawBadge(new Rect(row.x + 102f, row.y + 36f, 118f, 25f), fish.RarityName, fish.RarityColor);
         GUI.Label(new Rect(row.x + 102f, row.y + 62f, 180f, 24f), $"보유  {count}마리", FishingUiTheme.Small);
         GUI.Label(new Rect(row.x + 315f, row.y + 17f, 190f, 24f), $"개당  {fish.SalePrice:N0} G", FishingUiTheme.Body);
         FishingUiTheme.ColoredLabel(new Rect(row.x + 315f, row.y + 52f, 190f, 24f),

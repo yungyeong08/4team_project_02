@@ -28,6 +28,7 @@ public sealed class PixelMapBuilder : MonoBehaviour
             if (mapConfig == null) mapConfig = Resources.Load<FishingMapConfig>(ConfigResourcePath);
             if (mapConfig == null) mapConfig = FishingMapConfig.CreateRuntimeDefault();
             if (mapConfig.FishingSpots == null || mapConfig.FishingSpots.Count == 0) mapConfig.ApplyDefaults();
+            mapConfig.EnsureFirstAreaLayout();
             return mapConfig;
         }
     }
@@ -61,8 +62,11 @@ public sealed class PixelMapBuilder : MonoBehaviour
     {
         FishingSpotDefinition nearest = null;
         float nearestDistance = float.MaxValue;
-        foreach (FishingSpotDefinition spot in runtimeSpots)
+        for (int i = 0; i < runtimeSpots.Count; i++)
         {
+            // This milestone intentionally exposes only the beginner lake. Later lakes remain as expansion placeholders.
+            if (i > 0) continue;
+            FishingSpotDefinition spot = runtimeSpots[i];
             float distance = Vector2.Distance(playerPosition, spot.ShorePosition);
             if (distance <= spot.InteractionRange && distance < nearestDistance)
             {
@@ -71,6 +75,22 @@ public sealed class PixelMapBuilder : MonoBehaviour
             }
         }
         return nearest;
+    }
+
+    public FishingSpotDefinition GetFishingSpot(string id)
+    {
+        return runtimeSpots.Find(spot => spot != null && spot.Id == id);
+    }
+
+    public FishingSpotDefinition GetNearestLockedFishingSpot(Vector2 playerPosition)
+    {
+        for (int i = 1; i < runtimeSpots.Count; i++)
+        {
+            FishingSpotDefinition spot = runtimeSpots[i];
+            if (spot != null && Vector2.Distance(playerPosition, spot.ShorePosition) <= spot.InteractionRange + .7f)
+                return spot;
+        }
+        return null;
     }
 
     private Transform CreateRoot(string objectName)
@@ -90,6 +110,7 @@ public sealed class PixelMapBuilder : MonoBehaviour
         CreateRect(parent, "Deep Lake Trail", new Vector2(-5f, 4.5f), new Vector2(10f, 1.7f), pathColor, -8, false);
         CreateRect(parent, "Southern Entrance", new Vector2(0f, -13f), new Vector2(2.2f, 8f), pathColor, -8, false);
         CreateRect(parent, "Village Square", new Vector2(0f, -8f), new Vector2(8f, 5f), new Color(.57f, .49f, .30f), -7, false);
+        CreateRect(parent, "Market Path", new Vector2(-1.4f, -6.3f), new Vector2(1.5f, 3.3f), pathColor, -8, false);
     }
 
     private void CreateFishingArea(Transform waterParent, Transform gameplayParent, FishingSpotDefinition spot, int index)
@@ -102,12 +123,13 @@ public sealed class PixelMapBuilder : MonoBehaviour
         Vector2 dockDirection = (spot.BobberPosition - spot.ShorePosition).normalized;
         bool horizontal = Mathf.Abs(dockDirection.x) > Mathf.Abs(dockDirection.y);
         Vector2 dockSize = horizontal ? new Vector2(1.15f, .72f) : new Vector2(.72f, 1.15f);
-        CreateRect(gameplayParent, spot.DisplayName + " Dock", Vector2.Lerp(spot.ShorePosition, spot.BobberPosition, .28f),
-            dockSize, new Color(.48f, .29f, .15f), 0, false);
+        bool playable = index == 0;
+        CreateRect(gameplayParent, spot.DisplayName + (playable ? " Dock" : " Future Dock"), Vector2.Lerp(spot.ShorePosition, spot.BobberPosition, .28f),
+            dockSize, playable ? new Color(.48f, .29f, .15f) : new Color(.28f, .28f, .28f), 0, false);
 
         GameObject marker = CreateRect(gameplayParent, spot.DisplayName + " Fishing Marker",
             spot.ShorePosition + new Vector2(0f, .18f), new Vector2(.34f, .34f),
-            index == 0 ? new Color(.75f, .94f, .40f) : index == 1 ? new Color(.95f, .72f, .25f) : new Color(.77f, .37f, .93f),
+            playable ? new Color(.75f, .94f, .40f) : new Color(.38f, .40f, .40f),
             1, false);
         marker.transform.rotation = Quaternion.Euler(0f, 0f, 45f);
     }

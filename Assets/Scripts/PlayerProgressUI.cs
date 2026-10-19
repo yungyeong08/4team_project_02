@@ -17,6 +17,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private FishingGameController fishingController;
     private FishingShopSystem shop;
     private FishMarketSystem market;
+    private EarlyGameQuestSystem earlyGameProgress;
     private WindowMode windowMode;
     private InventoryTab inventoryTab;
     private Vector2 scrollPosition;
@@ -36,7 +37,8 @@ public sealed class PlayerProgressUI : MonoBehaviour
         GameSaveSystem gameSaveSystem,
         FishingGameController controller,
         FishingShopSystem shopSystem,
-        FishMarketSystem marketSystem)
+        FishMarketSystem marketSystem,
+        EarlyGameQuestSystem questSystem)
     {
         wallet = playerWallet;
         fishInventory = playerFishInventory;
@@ -47,6 +49,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         fishingController = controller;
         shop = shopSystem;
         market = marketSystem;
+        earlyGameProgress = questSystem;
     }
 
     private void Update()
@@ -78,6 +81,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         scrollPosition = Vector2.zero;
         statusMessage = "";
         if (mode == WindowMode.Pause || mode == WindowMode.MainMenu) Time.timeScale = 0f;
+        if (mode == WindowMode.Inventory) earlyGameProgress?.NotifyInventoryOpened();
     }
 
     private void CloseWindow()
@@ -124,39 +128,44 @@ public sealed class PlayerProgressUI : MonoBehaviour
             (fishingController != null && fishingController.IsFishingActive)) return;
 
         FishingRodDefinition equipped = rodInventory?.GetEquipped(rodCatalog);
-        // Keep clear of the centered interaction banner even on narrow game views.
-        var hud = new Rect(18f, 84f, 310f, 74f);
-        FishingUiTheme.DrawPanel(hud, true);
-        GUI.Label(new Rect(hud.x + 16f, hud.y + 8f, hud.width - 32f, 26f),
-            $"보유 금액  {(wallet != null ? wallet.Balance : 0):N0} G", FishingUiTheme.Heading);
-        GUI.Label(new Rect(hud.x + 16f, hud.y + 38f, hud.width - 32f, 24f),
-            "장착  " + (equipped != null ? equipped.DisplayName : "낚싯대 없음"), FishingUiTheme.Small);
+        // Compact game HUD: resource chip, equipped item slot, and key prompts.
+        FishingUiTheme.DrawMoneyChip(new Rect(18f, 84f, 210f, 40f), wallet != null ? wallet.Balance : 0);
+        var rodChip = new Rect(18f, 132f, 310f, 46f);
+        FishingUiTheme.DrawSlot(rodChip, equipped != null ? equipped.RarityColor : FishingUiTheme.Muted, equipped != null);
+        GUI.Label(new Rect(rodChip.x + 18f, rodChip.y + 3f, rodChip.width - 28f, 20f), "현재 장비", FishingUiTheme.Small);
+        GUI.Label(new Rect(rodChip.x + 18f, rodChip.y + 20f, rodChip.width - 28f, 23f),
+            equipped != null ? equipped.DisplayName : "낚싯대 없음", FishingUiTheme.Heading);
 
-        var rect = new Rect(18f, screenHeight - 49f, 370f, 31f);
-        FishingUiTheme.DrawCard(rect, true);
-        GUI.Label(rect, "I  인벤토리     C  물고기 도감     ESC  메뉴", FishingUiTheme.SmallCentered);
+        var rect = new Rect(18f, screenHeight - 58f, 490f, 40f);
+        FishingUiTheme.DrawPanel(rect, true);
+        GUI.Label(new Rect(rect.x + 10f, rect.y + 7f, 32f, 26f), "I", FishingUiTheme.Keycap);
+        GUI.Label(new Rect(rect.x + 46f, rect.y, 86f, rect.height), "가방", FishingUiTheme.SmallCentered);
+        GUI.Label(new Rect(rect.x + 138f, rect.y + 7f, 32f, 26f), "C", FishingUiTheme.Keycap);
+        GUI.Label(new Rect(rect.x + 174f, rect.y, 94f, rect.height), "도감", FishingUiTheme.SmallCentered);
+        GUI.Label(new Rect(rect.x + 278f, rect.y + 7f, 58f, 26f), "ESC", FishingUiTheme.Keycap);
+        GUI.Label(new Rect(rect.x + 342f, rect.y, 132f, rect.height), "메뉴", FishingUiTheme.SmallCentered);
     }
 
     private Rect BeginLargePanel(float screenWidth, float screenHeight, string title)
     {
-        float width = Mathf.Min(980f, screenWidth - 34f);
-        float height = Mathf.Min(720f, screenHeight - 34f);
+        float width = Mathf.Min(920f, screenWidth - 34f);
+        float height = Mathf.Min(610f, screenHeight - 34f);
         var panel = new Rect((screenWidth - width) * .5f, (screenHeight - height) * .5f, width, height);
         FishingUiTheme.DrawPanel(panel);
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 14f, panel.width - 100f, 42f), title, FishingUiTheme.Title);
-        FishingUiTheme.DrawDivider(new Rect(panel.x + 22f, panel.y + 60f, panel.width - 44f, 2f));
-        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 14f, 38f, 34f), "×", danger: true)) CloseWindow();
+        float plateWidth = Mathf.Min(430f, panel.width - 180f);
+        FishingUiTheme.DrawTitlePlate(new Rect(panel.x + (panel.width - plateWidth) * .5f, panel.y - 14f, plateWidth, 56f), title);
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 59f, panel.y + 15f, 40f, 36f), "×", danger: true)) CloseWindow();
         return panel;
     }
 
     private void DrawInventory(float screenWidth, float screenHeight)
     {
         Rect panel = BeginLargePanel(screenWidth, screenHeight, "인벤토리");
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 68f, 250f, 28f), $"보유 금액  {(wallet != null ? wallet.Balance : 0):N0} G", FishingUiTheme.Heading);
-        if (GUI.Button(new Rect(panel.x + 24f, panel.y + 102f, 170f, 38f), "물고기 가방", inventoryTab == InventoryTab.Fish ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab)) { inventoryTab = InventoryTab.Fish; scrollPosition = Vector2.zero; }
-        if (GUI.Button(new Rect(panel.x + 202f, panel.y + 102f, 170f, 38f), "낚싯대 장비", inventoryTab == InventoryTab.Rods ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab)) { inventoryTab = InventoryTab.Rods; scrollPosition = Vector2.zero; }
+        FishingUiTheme.DrawMoneyChip(new Rect(panel.x + 24f, panel.y + 58f, 190f, 40f), wallet != null ? wallet.Balance : 0);
+        if (GUI.Button(new Rect(panel.x + 24f, panel.y + 106f, 170f, 40f), "물고기 가방", inventoryTab == InventoryTab.Fish ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab)) { inventoryTab = InventoryTab.Fish; scrollPosition = Vector2.zero; }
+        if (GUI.Button(new Rect(panel.x + 202f, panel.y + 106f, 170f, 40f), "낚싯대 장비", inventoryTab == InventoryTab.Rods ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab)) { inventoryTab = InventoryTab.Rods; scrollPosition = Vector2.zero; }
 
-        var view = new Rect(panel.x + 22f, panel.y + 152f, panel.width - 44f, panel.height - 208f);
+        var view = new Rect(panel.x + 22f, panel.y + 156f, panel.width - 44f, panel.height - 212f);
         int rowCount = inventoryTab == InventoryTab.Fish ? GetOwnedFishTypeCount() : rodInventory?.OwnedRodCount ?? 0;
         float contentHeight = inventoryTab == InventoryTab.Fish
             ? CalculateFishGridHeight(view.width - 24f, rowCount)
@@ -206,7 +215,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
             int column = slotIndex % columns;
             int rowIndex = slotIndex / columns;
             Rect slot = new(column * (slotWidth + gap), 38f + rowIndex * (slotHeight + gap), slotWidth, slotHeight);
-            FishingUiTheme.DrawCard(slot, slotIndex % 2 == 1);
+            FishingUiTheme.DrawSlot(slot, fish.RarityColor);
 
             float iconSize = Mathf.Min(76f, slotWidth - 34f);
             Rect icon = new(slot.x + (slot.width - iconSize) * .5f, slot.y + 12f, iconSize, iconSize);
@@ -216,8 +225,21 @@ public sealed class PlayerProgressUI : MonoBehaviour
                 fish.RarityName, FishingUiTheme.SmallCentered, fish.RarityColor);
 
             var countBadge = new Rect(slot.xMax - 54f, slot.y + 58f, 43f, 28f);
-            FishingUiTheme.DrawPanel(countBadge, true);
-            GUI.Label(countBadge, "×" + count, FishingUiTheme.SmallCentered);
+            FishingUiTheme.DrawBadge(countBadge, "×" + count, FishingUiTheme.Gold);
+            slotIndex++;
+        }
+
+        // Keep a visible bag grid even when only a few fish are owned. This makes the
+        // screen read as an inventory instead of another encyclopedia-style list.
+        int visibleSlots = Mathf.Max(columns * 2, slotIndex);
+        while (slotIndex < visibleSlots)
+        {
+            int column = slotIndex % columns;
+            int rowIndex = slotIndex / columns;
+            Rect slot = new(column * (slotWidth + gap), 38f + rowIndex * (slotHeight + gap), slotWidth, slotHeight);
+            FishingUiTheme.DrawCard(slot, true);
+            FishingUiTheme.ColoredLabel(new Rect(slot.x + 10f, slot.y + 54f, slot.width - 20f, 44f),
+                "빈 슬롯", FishingUiTheme.SmallCentered, FishingUiTheme.Muted);
             slotIndex++;
         }
     }
@@ -238,7 +260,8 @@ public sealed class PlayerProgressUI : MonoBehaviour
         const float preferredWidth = 164f;
         const float slotHeight = 154f;
         int columns = Mathf.Max(2, Mathf.FloorToInt((width + gap) / (preferredWidth + gap)));
-        int rows = Mathf.CeilToInt(itemCount / (float)columns);
+        int visibleItems = Mathf.Max(columns * 2, itemCount);
+        int rows = Mathf.CeilToInt(visibleItems / (float)columns);
         return 38f + rows * slotHeight + Mathf.Max(0, rows - 1) * gap + 4f;
     }
 
@@ -250,13 +273,13 @@ public sealed class PlayerProgressUI : MonoBehaviour
         {
             if (rod == null || !rodInventory.Owns(rod.Id)) continue;
             Rect row = new(2f, rowIndex * 126f, width, 114f);
-            FishingUiTheme.DrawCard(row, rowIndex % 2 == 1);
+            bool equipped = rodInventory.EquippedRodId == rod.Id;
+            FishingUiTheme.DrawSlot(row, rod.RarityColor, equipped);
             FishingUiTheme.DrawTextureOrSwatch(new Rect(row.x + 14f, row.y + 22f, 68f, 68f), rod.Icon, rod.RarityColor);
             GUI.Label(new Rect(row.x + 98f, row.y + 9f, 300f, 28f), rod.DisplayName, FishingUiTheme.Heading);
-            DrawRarity(new Rect(row.x + 98f, row.y + 38f, 150f, 24f), rod.RarityName, rod.RarityColor);
+            FishingUiTheme.DrawBadge(new Rect(row.x + 98f, row.y + 38f, 120f, 25f), rod.RarityName, rod.RarityColor);
             GUI.Label(new Rect(row.x + 98f, row.y + 65f, row.width - 250f, 38f), rod.StatSummary, FishingUiTheme.Small);
 
-            bool equipped = rodInventory.EquippedRodId == rod.Id;
             if (FishingUiTheme.StyledButton(new Rect(row.xMax - 135f, row.y + 37f, 115f, 42f), equipped ? "장착 중" : "장착", primary: !equipped, enabled: !equipped))
             {
                 rodInventory.TryEquip(rod.Id);
@@ -273,10 +296,11 @@ public sealed class PlayerProgressUI : MonoBehaviour
         if (fishCatalog != null && fishInventory != null)
             foreach (FishDefinition fish in fishCatalog) if (fishInventory.IsDiscovered(fish.Id)) discovered++;
         int catalogCount = fishCatalog != null ? fishCatalog.Count : 0;
-        GUI.Label(new Rect(panel.x + 24f, panel.y + 70f, panel.width - 48f, 28f),
-            $"발견  {discovered} / {catalogCount}", FishingUiTheme.Heading);
-        FishingUiTheme.DrawBar(new Rect(panel.x + 210f, panel.y + 76f, panel.width - 240f, 14f),
-            catalogCount > 0 ? (float)discovered / catalogCount : 0f, FishingUiTheme.AccentBright);
+        FishingUiTheme.DrawBadge(new Rect(panel.x + 24f, panel.y + 60f, 170f, 36f),
+            $"발견  {discovered} / {catalogCount}", FishingUiTheme.WaterBright);
+        FishingUiTheme.DrawBar(new Rect(panel.x + 210f, panel.y + 63f, panel.width - 240f, 30f),
+            catalogCount > 0 ? (float)discovered / catalogCount : 0f, FishingUiTheme.AccentBright,
+            "도감 완성도");
 
         var view = new Rect(panel.x + 22f, panel.y + 108f, panel.width - 44f, panel.height - 138f);
         int count = fishCatalog?.Count ?? 0;
@@ -289,7 +313,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
     {
         if (fish == null) return;
         bool discovered = fishInventory != null && fishInventory.IsDiscovered(fish.Id);
-        FishingUiTheme.DrawCard(row, !discovered);
+        FishingUiTheme.DrawSlot(row, discovered ? fish.RarityColor : FishingUiTheme.Muted);
         if (discovered) FishingUiTheme.DrawTextureOrSwatch(new Rect(row.x + 12f, row.y + 12f, 76f, 76f), fish.Icon, fish.RarityColor);
         else
         {
@@ -299,7 +323,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         GUI.Label(new Rect(row.x + 104f, row.y + 12f, 300f, 30f), discovered ? fish.DisplayName : "???", FishingUiTheme.Heading);
         if (discovered)
         {
-            DrawRarity(new Rect(row.x + 104f, row.y + 45f, 180f, 24f), fish.RarityName, fish.RarityColor);
+            FishingUiTheme.DrawBadge(new Rect(row.x + 104f, row.y + 45f, 120f, 25f), fish.RarityName, fish.RarityColor);
             GUI.Label(new Rect(row.xMax - 260f, row.y + 34f, 235f, 30f), $"총 포획  {fishInventory.GetLifetimeCaught(fish.Id)}회", FishingUiTheme.Heading);
         }
         else GUI.Label(new Rect(row.x + 104f, row.y + 47f, 300f, 25f), "아직 발견하지 못했습니다.", FishingUiTheme.Small);
@@ -336,8 +360,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         height = Mathf.Min(height, screenHeight - 30f);
         var panel = new Rect((screenWidth - width) * .5f, (screenHeight - height) * .5f, width, height);
         FishingUiTheme.DrawPanel(panel);
-        GUI.Label(new Rect(panel.x + 25f, panel.y + 20f, panel.width - 50f, 48f), title, FishingUiTheme.Title);
-        FishingUiTheme.DrawDivider(new Rect(panel.x + 28f, panel.y + 72f, panel.width - 56f, 2f));
+        FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 65f, panel.y - 16f, panel.width - 130f, 60f), title);
         return panel;
     }
 

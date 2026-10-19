@@ -1,19 +1,23 @@
 using UnityEngine;
 
-/// <summary>Shared allocation-free IMGUI theme for the playable prototype.</summary>
+/// <summary>Temporary flat IMGUI skin. Final art can replace this without changing game logic.</summary>
 public static class FishingUiTheme
 {
-    public static readonly Color Ink = new(.055f, .075f, .09f, 1f);
-    public static readonly Color Panel = new(.09f, .14f, .16f, 1f);
-    public static readonly Color PanelLight = new(.13f, .20f, .21f, 1f);
-    public static readonly Color Card = new(.16f, .24f, .23f, 1f);
-    public static readonly Color CardAlt = new(.12f, .18f, .19f, 1f);
-    public static readonly Color Cream = new(.96f, .91f, .78f, 1f);
-    public static readonly Color Muted = new(.67f, .74f, .69f, 1f);
-    public static readonly Color Accent = new(.25f, .72f, .55f, 1f);
-    public static readonly Color AccentBright = new(.40f, .88f, .63f, 1f);
-    public static readonly Color Gold = new(.96f, .72f, .28f, 1f);
-    public static readonly Color Danger = new(.86f, .31f, .28f, 1f);
+    public static readonly Color Ink = new(.035f, .047f, .055f, 1f);
+    public static readonly Color Panel = new(.055f, .10f, .12f, 1f);
+    public static readonly Color PanelLight = new(.075f, .145f, .16f, 1f);
+    public static readonly Color Card = new(.09f, .17f, .18f, 1f);
+    public static readonly Color CardAlt = new(.065f, .125f, .14f, 1f);
+    public static readonly Color Cream = new(.98f, .93f, .78f, 1f);
+    public static readonly Color Muted = new(.64f, .72f, .68f, 1f);
+    public static readonly Color Accent = new(.12f, .61f, .55f, 1f);
+    public static readonly Color AccentBright = new(.35f, .91f, .68f, 1f);
+    public static readonly Color Water = new(.09f, .35f, .48f, 1f);
+    public static readonly Color WaterBright = new(.22f, .67f, .76f, 1f);
+    public static readonly Color Wood = new(.075f, .13f, .15f, 1f);
+    public static readonly Color WoodLight = new(.22f, .43f, .44f, 1f);
+    public static readonly Color Gold = new(.98f, .73f, .25f, 1f);
+    public static readonly Color Danger = new(.91f, .30f, .25f, 1f);
 
     public static GUIStyle Title { get; private set; }
     public static GUIStyle Heading { get; private set; }
@@ -29,21 +33,33 @@ public static class FishingUiTheme
     public static GUIStyle DisabledButton { get; private set; }
     public static GUIStyle Tab { get; private set; }
     public static GUIStyle ActiveTab { get; private set; }
+    public static GUIStyle Keycap { get; private set; }
+
+    private static GUIStyle panelStyle;
+    private static GUIStyle panelLightStyle;
+    private static GUIStyle cardStyle;
+    private static GUIStyle cardAltStyle;
+    private static GUIStyle slotStyle;
+    private static GUIStyle titlePlateStyle;
+    private static GUIStyle badgeStyle;
 
     private static Texture2D panelTexture;
     private static Texture2D panelLightTexture;
     private static Texture2D cardTexture;
     private static Texture2D cardAltTexture;
+    private static Texture2D slotTexture;
     private static Texture2D buttonTexture;
     private static Texture2D buttonHoverTexture;
     private static Texture2D buttonActiveTexture;
     private static Texture2D primaryTexture;
     private static Texture2D primaryHoverTexture;
     private static Texture2D dangerTexture;
+    private static Texture2D dangerHoverTexture;
     private static Texture2D disabledTexture;
-    private static Texture2D borderTexture;
-    private static Texture2D shadowTexture;
+    private static Texture2D woodTexture;
+    private static Texture2D keyTexture;
     private static Texture2D dimTexture;
+    private static Texture2D trackTexture;
     private static bool initialized;
 
     public static void Ensure()
@@ -51,20 +67,32 @@ public static class FishingUiTheme
         if (initialized && Title != null) return;
         initialized = true;
 
-        panelTexture = MakeTexture(Panel);
-        panelLightTexture = MakeTexture(PanelLight);
-        cardTexture = MakeTexture(Card);
-        cardAltTexture = MakeTexture(CardAlt);
-        buttonTexture = MakeTexture(new Color(.20f, .30f, .29f, 1f));
-        buttonHoverTexture = MakeTexture(new Color(.27f, .40f, .36f, 1f));
-        buttonActiveTexture = MakeTexture(new Color(.14f, .24f, .23f, 1f));
-        primaryTexture = MakeTexture(new Color(.17f, .55f, .39f, 1f));
-        primaryHoverTexture = MakeTexture(new Color(.23f, .67f, .47f, 1f));
-        dangerTexture = MakeTexture(new Color(.62f, .20f, .20f, 1f));
-        disabledTexture = MakeTexture(new Color(.15f, .18f, .18f, 1f));
-        borderTexture = MakeTexture(new Color(.35f, .49f, .43f, 1f));
-        shadowTexture = MakeTexture(new Color(0f, 0f, 0f, .36f));
-        dimTexture = MakeTexture(new Color(.015f, .025f, .03f, .76f));
+        panelTexture = MakeFrameTexture(new Color(.015f, .035f, .045f), Panel, new Color(.18f, .34f, .34f), new Color(.025f, .06f, .07f));
+        panelLightTexture = MakeFrameTexture(new Color(.02f, .05f, .055f), PanelLight, new Color(.25f, .43f, .38f), new Color(.035f, .08f, .08f));
+        cardTexture = MakeFrameTexture(new Color(.02f, .055f, .06f), Card, new Color(.20f, .36f, .32f), new Color(.035f, .09f, .09f));
+        cardAltTexture = MakeFrameTexture(new Color(.018f, .045f, .055f), CardAlt, new Color(.14f, .27f, .27f), new Color(.025f, .07f, .075f));
+        slotTexture = MakeFrameTexture(new Color(.02f, .04f, .045f), new Color(.055f, .095f, .105f), new Color(.19f, .31f, .28f), new Color(.02f, .055f, .06f));
+        buttonTexture = MakeFrameTexture(new Color(.025f, .055f, .06f), new Color(.13f, .24f, .23f), new Color(.27f, .43f, .36f), new Color(.055f, .12f, .12f));
+        buttonHoverTexture = MakeFrameTexture(new Color(.03f, .08f, .075f), new Color(.18f, .34f, .30f), new Color(.40f, .61f, .46f), new Color(.07f, .16f, .14f));
+        buttonActiveTexture = MakeFrameTexture(new Color(.015f, .04f, .045f), new Color(.08f, .17f, .17f), new Color(.15f, .29f, .27f), new Color(.025f, .07f, .075f), pressed: true);
+        primaryTexture = MakeFrameTexture(new Color(.025f, .10f, .09f), new Color(.09f, .47f, .39f), new Color(.36f, .85f, .61f), new Color(.035f, .20f, .17f));
+        primaryHoverTexture = MakeFrameTexture(new Color(.03f, .13f, .105f), new Color(.12f, .60f, .46f), new Color(.50f, .96f, .70f), new Color(.04f, .25f, .19f));
+        dangerTexture = MakeFrameTexture(new Color(.14f, .035f, .03f), new Color(.56f, .14f, .13f), new Color(.91f, .37f, .27f), new Color(.25f, .055f, .05f));
+        dangerHoverTexture = MakeFrameTexture(new Color(.18f, .045f, .035f), new Color(.70f, .18f, .15f), new Color(1f, .49f, .33f), new Color(.31f, .07f, .055f));
+        disabledTexture = MakeFrameTexture(new Color(.035f, .045f, .045f), new Color(.10f, .13f, .13f), new Color(.20f, .23f, .22f), new Color(.055f, .07f, .07f));
+        woodTexture = MakeFrameTexture(new Color(.02f, .055f, .065f), PanelLight, Accent, PanelLight);
+        keyTexture = MakeFrameTexture(new Color(.025f, .04f, .045f), new Color(.20f, .27f, .27f), new Color(.48f, .59f, .53f), new Color(.08f, .12f, .12f));
+
+        dimTexture = MakeTexture(new Color(.01f, .018f, .023f, .82f));
+        trackTexture = MakeTexture(new Color(.025f, .09f, .12f, 1f));
+
+        panelStyle = FramedStyle(panelTexture, 4);
+        panelLightStyle = FramedStyle(panelLightTexture, 4);
+        cardStyle = FramedStyle(cardTexture, 4);
+        cardAltStyle = FramedStyle(cardAltTexture, 4);
+        slotStyle = FramedStyle(slotTexture, 4);
+        titlePlateStyle = FramedStyle(woodTexture, 4);
+        badgeStyle = FramedStyle(cardAltTexture, 4);
 
         Title = Label(28, FontStyle.Bold, TextAnchor.MiddleCenter, Cream);
         Heading = Label(18, FontStyle.Bold, TextAnchor.MiddleLeft, Cream);
@@ -77,10 +105,13 @@ public static class FishingUiTheme
 
         Button = CreateButton(buttonTexture, buttonHoverTexture, buttonActiveTexture, Cream);
         PrimaryButton = CreateButton(primaryTexture, primaryHoverTexture, buttonActiveTexture, Color.white);
-        DangerButton = CreateButton(dangerTexture, MakeTexture(new Color(.76f, .26f, .23f, 1f)), buttonActiveTexture, Color.white);
-        DisabledButton = CreateButton(disabledTexture, disabledTexture, disabledTexture, new Color(.48f, .54f, .51f));
+        DangerButton = CreateButton(dangerTexture, dangerHoverTexture, buttonActiveTexture, Color.white);
+        DisabledButton = CreateButton(disabledTexture, disabledTexture, disabledTexture, new Color(.43f, .49f, .47f));
         Tab = CreateButton(cardAltTexture, buttonHoverTexture, buttonActiveTexture, Muted);
         ActiveTab = CreateButton(primaryTexture, primaryHoverTexture, buttonActiveTexture, Color.white);
+        Keycap = CreateButton(keyTexture, keyTexture, buttonActiveTexture, Cream);
+        Keycap.fontSize = 14;
+        Keycap.padding = new RectOffset(5, 5, 3, 4);
     }
 
     public static void DrawDim(Rect rect)
@@ -92,50 +123,137 @@ public static class FishingUiTheme
     public static void DrawPanel(Rect rect, bool light = false)
     {
         Ensure();
-        GUI.DrawTexture(new Rect(rect.x + 8f, rect.y + 10f, rect.width, rect.height), shadowTexture);
-        GUI.DrawTexture(rect, borderTexture);
-        GUI.DrawTexture(new Rect(rect.x + 3f, rect.y + 3f, rect.width - 6f, rect.height - 6f), light ? panelLightTexture : panelTexture);
+        GUI.Box(rect, GUIContent.none, light ? panelLightStyle : panelStyle);
     }
 
     public static void DrawCard(Rect rect, bool alternate = false)
     {
         Ensure();
-        GUI.DrawTexture(rect, borderTexture);
-        GUI.DrawTexture(new Rect(rect.x + 2f, rect.y + 2f, rect.width - 4f, rect.height - 4f), alternate ? cardAltTexture : cardTexture);
+        GUI.Box(rect, GUIContent.none, alternate ? cardAltStyle : cardStyle);
+    }
+
+    public static void DrawSlot(Rect rect, Color accent, bool selected = false)
+    {
+        Ensure();
+        GUI.Box(rect, GUIContent.none, selected ? cardStyle : slotStyle);
+        DrawSolid(new Rect(rect.x + 3f, rect.y + 3f, 5f, rect.height - 6f), accent);
+        if (selected)
+        {
+            DrawSolid(new Rect(rect.x + 3f, rect.y + 3f, rect.width - 6f, 3f), accent);
+            DrawSolid(new Rect(rect.x + 3f, rect.yMax - 6f, rect.width - 6f, 3f), accent);
+        }
+    }
+
+    public static void DrawTitlePlate(Rect rect, string title, Color? accent = null)
+    {
+        Ensure();
+        GUI.Box(rect, GUIContent.none, titlePlateStyle);
+        DrawSolid(new Rect(rect.x + 4f, rect.y + 4f, 5f, rect.height - 8f), accent ?? Accent);
+        GUI.Label(new Rect(rect.x + 10f, rect.y, rect.width - 14f, rect.height), title, Title);
+    }
+
+    public static void DrawNotice(Rect rect, string text, Color? accent = null)
+    {
+        Ensure();
+        DrawPanel(rect, true);
+        DrawSolid(new Rect(rect.x + 5f, rect.y + 5f, 5f, rect.height - 10f), accent ?? WaterBright);
+        GUI.Label(new Rect(rect.x + 16f, rect.y + 2f, rect.width - 24f, rect.height - 4f), text, Banner);
+    }
+
+    public static void DrawInteractionPrompt(Rect rect, string key, string label)
+    {
+        Ensure();
+        DrawPanel(rect, true);
+        Rect keyRect = new(rect.x + 10f, rect.y + 8f, 40f, rect.height - 16f);
+        GUI.Label(keyRect, key, Keycap);
+        GUI.Label(new Rect(rect.x + 60f, rect.y + 2f, rect.width - 70f, rect.height - 4f), label, BodyCentered);
+    }
+
+    public static void DrawMoneyChip(Rect rect, int amount)
+    {
+        Ensure();
+        GUI.Box(rect, GUIContent.none, badgeStyle);
+        DrawSolid(new Rect(rect.x + 7f, rect.y + rect.height * .5f - 6f, 12f, 12f), Gold);
+        DrawSolid(new Rect(rect.x + 10f, rect.y + rect.height * .5f - 3f, 6f, 6f), new Color(.55f, .28f, .08f));
+        ColoredLabel(new Rect(rect.x + 25f, rect.y, rect.width - 32f, rect.height), $"{amount:N0} G", Heading, Gold);
+    }
+
+    public static void DrawBadge(Rect rect, string text, Color color)
+    {
+        Ensure();
+        GUI.Box(rect, GUIContent.none, badgeStyle);
+        DrawSolid(new Rect(rect.x + 4f, rect.y + 4f, 4f, rect.height - 8f), color);
+        ColoredLabel(new Rect(rect.x + 12f, rect.y, rect.width - 16f, rect.height), text, SmallCentered, color);
     }
 
     public static void DrawDivider(Rect rect)
     {
         Ensure();
-        GUI.DrawTexture(rect, borderTexture);
+        DrawSolid(rect, new Color(.31f, .49f, .41f));
+        if (rect.height >= 3f) DrawSolid(new Rect(rect.x, rect.y, rect.width, 1f), new Color(.52f, .70f, .54f));
     }
 
     public static void DrawBar(Rect rect, float value, Color fill)
+        => DrawBar(rect, value, fill, null);
+
+    public static void DrawBar(Rect rect, float value, Color fill, string label)
     {
         Ensure();
         value = Mathf.Clamp01(value);
-        GUI.DrawTexture(rect, borderTexture);
-        Rect inner = new(rect.x + 3f, rect.y + 3f, rect.width - 6f, rect.height - 6f);
-        GUI.DrawTexture(inner, MakeTextureCachedBackground());
-        if (value <= 0f) return;
-        Color previous = GUI.color;
-        GUI.color = fill;
-        GUI.DrawTexture(new Rect(inner.x, inner.y, inner.width * value, inner.height), Texture2D.whiteTexture);
-        GUI.color = previous;
+        GUI.Box(rect, GUIContent.none, slotStyle);
+        Rect inner = new(rect.x + 5f, rect.y + 5f, rect.width - 10f, rect.height - 10f);
+        DrawSolid(inner, new Color(.015f, .045f, .055f));
+        if (value > 0f)
+        {
+            Rect fillRect = new(inner.x, inner.y, inner.width * value, inner.height);
+            DrawSolid(fillRect, fill);
+        }
+        for (int i = 1; i < 10; i++)
+        {
+            float x = inner.x + inner.width * i / 10f;
+            DrawSolid(new Rect(x, inner.y, 1f, inner.height), new Color(0f, 0f, 0f, .22f));
+        }
+        if (!string.IsNullOrEmpty(label)) GUI.Label(rect, label, SmallCentered);
+    }
+
+    public static void DrawFishingLane(Rect rect)
+    {
+        Ensure();
+        GUI.Box(rect, GUIContent.none, slotStyle);
+        Rect inner = new(rect.x + 6f, rect.y + 6f, rect.width - 12f, rect.height - 12f);
+        GUI.DrawTexture(inner, trackTexture);
+        DrawSolid(new Rect(inner.x, inner.y + inner.height * .5f - 1f, inner.width, 2f), new Color(.17f, .45f, .52f, .55f));
+        for (int i = 1; i < 20; i++)
+        {
+            float x = inner.x + inner.width * i / 20f;
+            float tick = i % 5 == 0 ? 11f : 6f;
+            DrawSolid(new Rect(x, inner.yMax - tick, 1f, tick), new Color(.28f, .59f, .61f, .50f));
+        }
+    }
+
+    public static void DrawCaptureZone(Rect rect)
+    {
+        Ensure();
+        DrawSolid(rect, new Color(AccentBright.r, AccentBright.g, AccentBright.b, .30f));
+        DrawSolid(new Rect(rect.x, rect.y, rect.width, 3f), AccentBright);
+        DrawSolid(new Rect(rect.x, rect.yMax - 3f, rect.width, 3f), AccentBright);
+        DrawSolid(new Rect(rect.x, rect.y, 3f, rect.height), AccentBright);
+        DrawSolid(new Rect(rect.xMax - 3f, rect.y, 3f, rect.height), AccentBright);
     }
 
     public static void DrawTextureOrSwatch(Rect rect, Texture texture, Color swatch)
     {
-        DrawCard(rect, true);
-        Rect inner = new(rect.x + 5f, rect.y + 5f, rect.width - 10f, rect.height - 10f);
+        Ensure();
+        GUI.Box(rect, GUIContent.none, slotStyle);
+        Rect inner = new(rect.x + 6f, rect.y + 6f, rect.width - 12f, rect.height - 12f);
         if (texture != null) GUI.DrawTexture(inner, texture, ScaleMode.ScaleToFit, true);
-        else
-        {
-            Color previous = GUI.color;
-            GUI.color = swatch;
-            GUI.DrawTexture(inner, Texture2D.whiteTexture);
-            GUI.color = previous;
-        }
+        else DrawSolid(inner, swatch);
+    }
+
+    public static void DrawRarityStrip(Rect rect, Color color)
+    {
+        Ensure();
+        DrawSolid(new Rect(rect.x + 3f, rect.y + 3f, 5f, rect.height - 6f), color);
     }
 
     public static bool StyledButton(Rect rect, string text, bool primary = false, bool danger = false, bool enabled = true)
@@ -157,6 +275,30 @@ public static class FishingUiTheme
         GUI.contentColor = previous;
     }
 
+    public static void DrawFlatRect(Rect rect, Color color)
+    {
+        Ensure();
+        DrawSolid(rect, color);
+    }
+
+    public static void DrawFlatOutline(Rect rect, Color color, float thickness = 2f)
+    {
+        Ensure();
+        thickness = Mathf.Max(1f, thickness);
+        DrawSolid(new Rect(rect.x, rect.y, rect.width, thickness), color);
+        DrawSolid(new Rect(rect.x, rect.yMax - thickness, rect.width, thickness), color);
+        DrawSolid(new Rect(rect.x, rect.y, thickness, rect.height), color);
+        DrawSolid(new Rect(rect.xMax - thickness, rect.y, thickness, rect.height), color);
+    }
+
+    private static void DrawSolid(Rect rect, Color color)
+    {
+        Color previous = GUI.color;
+        GUI.color = color;
+        GUI.DrawTexture(rect, Texture2D.whiteTexture);
+        GUI.color = previous;
+    }
+
     private static GUIStyle Label(int size, FontStyle fontStyle, TextAnchor alignment, Color color)
     {
         return new GUIStyle(GUI.skin.label)
@@ -165,7 +307,18 @@ public static class FishingUiTheme
             fontSize = size,
             fontStyle = fontStyle,
             wordWrap = true,
+            clipping = TextClipping.Clip,
             normal = { textColor = color }
+        };
+    }
+
+    private static GUIStyle FramedStyle(Texture2D background, int border)
+    {
+        return new GUIStyle(GUI.skin.box)
+        {
+            normal = { background = background },
+            border = new RectOffset(border, border, border, border),
+            padding = new RectOffset(border, border, border, border)
         };
     }
 
@@ -176,8 +329,8 @@ public static class FishingUiTheme
             alignment = TextAnchor.MiddleCenter,
             fontSize = 16,
             fontStyle = FontStyle.Bold,
-            padding = new RectOffset(12, 12, 7, 7),
-            border = new RectOffset(2, 2, 2, 2)
+            padding = new RectOffset(12, 12, 7, 8),
+            border = new RectOffset(4, 4, 4, 4)
         };
         style.normal.background = normal;
         style.normal.textColor = textColor;
@@ -206,5 +359,25 @@ public static class FishingUiTheme
         return texture;
     }
 
-    private static Texture2D MakeTextureCachedBackground() => cardAltTexture;
+    private static Texture2D MakeFrameTexture(Color outline, Color fill, Color highlight, Color shade, bool pressed = false)
+    {
+        const int size = 9;
+        var texture = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            name = "Fishing UI Pixel Frame",
+            filterMode = FilterMode.Point,
+            wrapMode = TextureWrapMode.Clamp,
+            hideFlags = HideFlags.HideAndDontSave
+        };
+
+        for (int y = 0; y < size; y++)
+        for (int x = 0; x < size; x++)
+        {
+            bool outer = x == 0 || y == 0 || x == size - 1 || y == size - 1;
+            texture.SetPixel(x, y, outer ? outline : fill);
+        }
+
+        texture.Apply(false, true);
+        return texture;
+    }
 }

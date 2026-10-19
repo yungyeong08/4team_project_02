@@ -14,8 +14,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FishingMapConfig
   MapSize: {x: 44, y: 30}
   PlayerStart: {x: 0, y: -10}
-  FishingShopPosition: {x: 3.2, y: -8}
-  FishMarketPosition: {x: -3.2, y: -8}
+  FishingShopPosition: {x: 3, y: -7.5}
+  FishMarketPosition: {x: -1.5, y: -5.5}
   FishingSpots:
   - Id: village_pond
     DisplayName: "\uB9C8\uC744 \uC5F0\uBABB \xB7 \uCD08\uAE09"

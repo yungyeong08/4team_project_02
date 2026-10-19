@@ -6,14 +6,15 @@ using UnityEngine;
 [Serializable]
 public sealed class FishingGameSaveData
 {
-    public const int CurrentVersion = 2;
+    public const int CurrentVersion = 3;
     public int Version = CurrentVersion;
-    public int Money = 1000;
+    public int Money = 100;
     public List<FishInventory.FishProgress> FishProgress = new();
     public List<string> OwnedRodIds = new();
     public string EquippedRodId = FishingRodCatalog.DefaultRodId;
     public float PlayerX;
     public float PlayerY;
+    public EarlyGameProgressSaveData EarlyGameProgress = new();
 }
 
 /// <summary>Persists the existing wallet and inventory components as one versioned JSON save.</summary>
@@ -25,6 +26,7 @@ public sealed class GameSaveSystem : MonoBehaviour
     private PlayerWallet wallet;
     private FishInventory fishInventory;
     private FishingRodInventory rodInventory;
+    private EarlyGameQuestSystem earlyGameProgress;
     private Transform player;
     private Vector2 defaultPlayerPosition;
     private Vector2 mapSize;
@@ -47,12 +49,14 @@ public sealed class GameSaveSystem : MonoBehaviour
         Vector2 newGamePosition,
         Vector2 worldSize,
         IReadOnlyList<FishDefinition> fishCatalog,
-        IReadOnlyList<FishingRodDefinition> rodCatalog)
+        IReadOnlyList<FishingRodDefinition> rodCatalog,
+        EarlyGameQuestSystem questSystem)
     {
         wallet = playerWallet;
         fishInventory = playerFishInventory;
         rodInventory = playerRodInventory;
         player = playerTransform;
+        earlyGameProgress = questSystem;
         defaultPlayerPosition = newGamePosition;
         mapSize = worldSize;
         validFishIds.Clear();
@@ -71,6 +75,7 @@ public sealed class GameSaveSystem : MonoBehaviour
         wallet.BalanceChanged += MarkDirty;
         fishInventory.InventoryChanged += MarkDirty;
         rodInventory.InventoryChanged += MarkDirty;
+        if (earlyGameProgress != null) earlyGameProgress.ProgressChanged += MarkDirty;
         initialized = true;
     }
 
@@ -103,7 +108,8 @@ public sealed class GameSaveSystem : MonoBehaviour
                 OwnedRodIds = rodInventory.CreateSnapshot(),
                 EquippedRodId = rodInventory.EquippedRodId,
                 PlayerX = player.position.x,
-                PlayerY = player.position.y
+                PlayerY = player.position.y,
+                EarlyGameProgress = earlyGameProgress != null ? earlyGameProgress.CreateSnapshot() : new EarlyGameProgressSaveData()
             };
 
             string tempPath = SavePath + ".tmp";
@@ -168,6 +174,7 @@ public sealed class GameSaveSystem : MonoBehaviour
                 savedPosition.y = Mathf.Clamp(savedPosition.y, -halfHeight, halfHeight);
             }
             player.position = savedPosition;
+            earlyGameProgress?.Restore(data.EarlyGameProgress);
             dirty = false;
             LastStatus = "저장 데이터를 불러왔습니다.";
             return true;
@@ -215,10 +222,11 @@ public sealed class GameSaveSystem : MonoBehaviour
 
     public void ApplyNewGameState()
     {
-        wallet.Initialize(1000);
+        wallet.Initialize(100);
         fishInventory.Restore(null);
         rodInventory.Restore(null, FishingRodCatalog.DefaultRodId);
         if (player != null) player.position = defaultPlayerPosition;
+        earlyGameProgress?.ResetProgress();
         dirty = false;
         LastStatus = "새 게임으로 시작했습니다.";
     }
@@ -238,5 +246,6 @@ public sealed class GameSaveSystem : MonoBehaviour
         if (wallet != null) wallet.BalanceChanged -= MarkDirty;
         if (fishInventory != null) fishInventory.InventoryChanged -= MarkDirty;
         if (rodInventory != null) rodInventory.InventoryChanged -= MarkDirty;
+        if (earlyGameProgress != null) earlyGameProgress.ProgressChanged -= MarkDirty;
     }
 }
