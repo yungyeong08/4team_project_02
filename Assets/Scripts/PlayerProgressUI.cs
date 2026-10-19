@@ -5,7 +5,7 @@ using UnityEngine;
 [DefaultExecutionOrder(-1000)]
 public sealed class PlayerProgressUI : MonoBehaviour
 {
-    private enum WindowMode { None, Inventory, Codex, Pause, MainMenu }
+    private enum WindowMode { None, Inventory, Codex, Pause, MainMenu, ResetConfirm }
     private enum InventoryTab { Fish, Rods }
 
     private PlayerWallet wallet;
@@ -26,7 +26,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
     public bool IsBlockingGameplay => windowMode != WindowMode.None;
     public bool IsInventoryOpen => windowMode == WindowMode.Inventory;
     public bool IsCodexOpen => windowMode == WindowMode.Codex;
-    public bool IsPauseOpen => windowMode == WindowMode.Pause || windowMode == WindowMode.MainMenu;
+    public bool IsPauseOpen => windowMode == WindowMode.Pause || windowMode == WindowMode.MainMenu || windowMode == WindowMode.ResetConfirm;
 
     public void Setup(
         PlayerWallet playerWallet,
@@ -59,12 +59,14 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
         if (Input.GetKeyDown(KeyCode.Escape))
         {
-            if (windowMode != WindowMode.None) CloseWindow();
+            if (windowMode == WindowMode.ResetConfirm) OpenWindow(WindowMode.Pause);
+            else if (windowMode != WindowMode.None) CloseWindow();
             else if (!externalWindowOpen && !fishingActive) OpenWindow(WindowMode.Pause);
             return;
         }
 
-        if (externalWindowOpen || fishingActive || windowMode == WindowMode.Pause || windowMode == WindowMode.MainMenu) return;
+        if (externalWindowOpen || fishingActive || windowMode == WindowMode.Pause ||
+            windowMode == WindowMode.MainMenu || windowMode == WindowMode.ResetConfirm) return;
         if (Input.GetKeyDown(KeyCode.I)) ToggleWindow(WindowMode.Inventory);
         else if (Input.GetKeyDown(KeyCode.C)) ToggleWindow(WindowMode.Codex);
     }
@@ -80,7 +82,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         windowMode = mode;
         scrollPosition = Vector2.zero;
         statusMessage = "";
-        if (mode == WindowMode.Pause || mode == WindowMode.MainMenu) Time.timeScale = 0f;
+        if (mode == WindowMode.Pause || mode == WindowMode.MainMenu || mode == WindowMode.ResetConfirm) Time.timeScale = 0f;
         if (mode == WindowMode.Inventory) earlyGameProgress?.NotifyInventoryOpened();
     }
 
@@ -116,7 +118,8 @@ public sealed class PlayerProgressUI : MonoBehaviour
         if (windowMode == WindowMode.Inventory) DrawInventory(screenWidth, screenHeight);
         else if (windowMode == WindowMode.Codex) DrawCodex(screenWidth, screenHeight);
         else if (windowMode == WindowMode.Pause) DrawPause(screenWidth, screenHeight);
-        else DrawMainMenu(screenWidth, screenHeight);
+        else if (windowMode == WindowMode.MainMenu) DrawMainMenu(screenWidth, screenHeight);
+        else DrawResetConfirm(screenWidth, screenHeight);
 
         GUI.matrix = previousMatrix;
     }
@@ -331,14 +334,15 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void DrawPause(float screenWidth, float screenHeight)
     {
-        Rect panel = CenterPanel(screenWidth, screenHeight, 470f, 520f, "일시정지");
+        Rect panel = CenterPanel(screenWidth, screenHeight, 470f, 590f, "일시정지");
         float x = panel.x + 75f;
         float y = panel.y + 92f;
         float width = panel.width - 150f;
         if (FishingUiTheme.StyledButton(new Rect(x, y, width, 52f), "게임 계속하기", primary: true)) CloseWindow();
         if (FishingUiTheme.StyledButton(new Rect(x, y + 66f, width, 52f), "저장")) statusMessage = saveSystem != null && saveSystem.Save() ? "게임을 저장했습니다." : "저장하지 못했습니다.";
         if (FishingUiTheme.StyledButton(new Rect(x, y + 132f, width, 52f), "메인 메뉴")) OpenWindow(WindowMode.MainMenu);
-        if (FishingUiTheme.StyledButton(new Rect(x, y + 198f, width, 52f), "게임 종료", danger: true)) QuitGame();
+        if (FishingUiTheme.StyledButton(new Rect(x, y + 198f, width, 52f), "게임 초기화", danger: true)) OpenWindow(WindowMode.ResetConfirm);
+        if (FishingUiTheme.StyledButton(new Rect(x, y + 264f, width, 52f), "게임 종료", danger: true)) QuitGame();
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 92f, panel.width - 60f, 54f), statusMessage, FishingUiTheme.BodyCentered);
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 42f, panel.width - 60f, 24f), "ESC로 게임에 돌아가기", FishingUiTheme.SmallCentered);
     }
@@ -352,6 +356,28 @@ public sealed class PlayerProgressUI : MonoBehaviour
             statusMessage = saveSystem != null && saveSystem.TryLoad() ? saveSystem.LastStatus : "불러올 저장 데이터가 없습니다.";
         if (FishingUiTheme.StyledButton(new Rect(panel.x + 105f, panel.y + 275f, panel.width - 210f, 54f), "게임 종료", danger: true)) QuitGame();
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 50f, panel.width - 60f, 28f), statusMessage, FishingUiTheme.BodyCentered);
+    }
+
+    private void DrawResetConfirm(float screenWidth, float screenHeight)
+    {
+        Rect panel = CenterPanel(screenWidth, screenHeight, 560f, 360f, "게임 초기화");
+        GUI.Label(new Rect(panel.x + 55f, panel.y + 76f, panel.width - 110f, 36f),
+            "저장된 진행 상황을 모두 지울까요?", FishingUiTheme.Heading);
+        FishingUiTheme.ColoredLabel(new Rect(panel.x + 55f, panel.y + 118f, panel.width - 110f, 72f),
+            "돈 · 물고기 · 도감 · 낚싯대 · 퀘스트 · 위치가\n처음 상태로 돌아갑니다.",
+            FishingUiTheme.BodyCentered, FishingUiTheme.Gold);
+
+        float buttonY = panel.y + 222f;
+        if (FishingUiTheme.StyledButton(new Rect(panel.x + 55f, buttonY, 210f, 54f), "취소"))
+            OpenWindow(WindowMode.Pause);
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 265f, buttonY, 210f, 54f), "초기화", danger: true))
+        {
+            bool reset = saveSystem != null && saveSystem.ResetGame();
+            statusMessage = reset ? "게임을 처음 상태로 초기화했습니다." : "게임을 초기화하지 못했습니다.";
+            if (reset) CloseWindow();
+        }
+        GUI.Label(new Rect(panel.x + 40f, panel.yMax - 48f, panel.width - 80f, 26f),
+            "ESC를 누르면 취소합니다.", FishingUiTheme.SmallCentered);
     }
 
     private Rect CenterPanel(float screenWidth, float screenHeight, float width, float height, string title)

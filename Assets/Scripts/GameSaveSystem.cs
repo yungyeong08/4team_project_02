@@ -6,7 +6,7 @@ using UnityEngine;
 [Serializable]
 public sealed class FishingGameSaveData
 {
-    public const int CurrentVersion = 3;
+    public const int CurrentVersion = 4;
     public int Version = CurrentVersion;
     public int Money = 100;
     public List<FishInventory.FishProgress> FishProgress = new();
@@ -163,7 +163,12 @@ public sealed class GameSaveSystem : MonoBehaviour
             fishInventory.Restore(safeFishProgress);
             rodInventory.Restore(safeRodIds, safeEquippedRod);
 
-            Vector2 savedPosition = data.Version <= 0 ? defaultPlayerPosition : new Vector2(data.PlayerX, data.PlayerY);
+            bool requiresStarterPosition = data.Version < FishingGameSaveData.CurrentVersion ||
+                data.EarlyGameProgress == null ||
+                data.EarlyGameProgress.TutorialStep <= (int)EarlyTutorialStep.ReachFirstLake;
+            Vector2 savedPosition = requiresStarterPosition
+                ? defaultPlayerPosition
+                : new Vector2(data.PlayerX, data.PlayerY);
             if (float.IsNaN(savedPosition.x) || float.IsInfinity(savedPosition.x) ||
                 float.IsNaN(savedPosition.y) || float.IsInfinity(savedPosition.y)) savedPosition = defaultPlayerPosition;
             if (mapSize.x > 1f && mapSize.y > 1f)
@@ -175,8 +180,13 @@ public sealed class GameSaveSystem : MonoBehaviour
             }
             player.position = savedPosition;
             earlyGameProgress?.Restore(data.EarlyGameProgress);
-            dirty = false;
-            LastStatus = "저장 데이터를 불러왔습니다.";
+            // Persist the migrated starter position shortly after an older save loads,
+            // otherwise the same legacy position would be migrated on every launch.
+            dirty = requiresStarterPosition;
+            if (dirty) dirtyAt = Time.unscaledTime;
+            LastStatus = requiresStarterPosition
+                ? "기존 저장 데이터를 첫 호수 시작 위치로 옮겼습니다."
+                : "저장 데이터를 불러왔습니다.";
             return true;
         }
         catch (Exception exception)
@@ -229,6 +239,31 @@ public sealed class GameSaveSystem : MonoBehaviour
         earlyGameProgress?.ResetProgress();
         dirty = false;
         LastStatus = "새 게임으로 시작했습니다.";
+    }
+
+    public bool ResetGame()
+    {
+        try
+        {
+            DeleteSaveFileIfPresent(SavePath);
+            DeleteSaveFileIfPresent(BackupPath);
+            DeleteSaveFileIfPresent(SavePath + ".tmp");
+            ApplyNewGameState();
+            bool saved = Save();
+            if (saved) LastStatus = "게임 진행 상황을 초기화했습니다.";
+            return saved;
+        }
+        catch (Exception exception)
+        {
+            LastStatus = "게임을 초기화하지 못했습니다: " + exception.Message;
+            Debug.LogWarning(LastStatus);
+            return false;
+        }
+    }
+
+    private static void DeleteSaveFileIfPresent(string path)
+    {
+        if (File.Exists(path)) File.Delete(path);
     }
 
     private void OnApplicationPause(bool paused)

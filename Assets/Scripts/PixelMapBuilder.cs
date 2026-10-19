@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Builds a medium-sized, data-driven overworld with three replaceable fishing areas.</summary>
+/// <summary>Builds the current starter area while retaining future spot data in the map config.</summary>
 [ExecuteAlways]
 public sealed class PixelMapBuilder : MonoBehaviour
 {
@@ -44,7 +44,8 @@ public sealed class PixelMapBuilder : MonoBehaviour
     {
         ClearGeneratedChildren();
         runtimeSpots.Clear();
-        runtimeSpots.AddRange(Config.FishingSpots);
+        if (Config.FishingSpots.Count > 0 && Config.FishingSpots[0] != null)
+            runtimeSpots.Add(Config.FishingSpots[0]);
 
         Transform groundRoot = CreateRoot("01 Ground and Paths");
         Transform waterRoot = CreateRoot("02 Water Areas");
@@ -64,8 +65,6 @@ public sealed class PixelMapBuilder : MonoBehaviour
         float nearestDistance = float.MaxValue;
         for (int i = 0; i < runtimeSpots.Count; i++)
         {
-            // This milestone intentionally exposes only the beginner lake. Later lakes remain as expansion placeholders.
-            if (i > 0) continue;
             FishingSpotDefinition spot = runtimeSpots[i];
             float distance = Vector2.Distance(playerPosition, spot.ShorePosition);
             if (distance <= spot.InteractionRange && distance < nearestDistance)
@@ -103,14 +102,11 @@ public sealed class PixelMapBuilder : MonoBehaviour
     private void CreateGroundAndPaths(Transform parent)
     {
         CreateRect(parent, "Grass Ground", Vector2.zero, Config.MapSize, groundColor, -10, false);
-        CreateRect(parent, "Village Road", new Vector2(0f, -8f), new Vector2(14f, 2.2f), pathColor, -8, false);
-        CreateRect(parent, "North-South Trail", new Vector2(0f, 2f), new Vector2(2.2f, 22f), pathColor, -8, false);
-        CreateRect(parent, "Forest Lake Trail", new Vector2(3f, 1f), new Vector2(6f, 1.7f), pathColor, -8, false);
-        CreateRect(parent, "Beginner Pond Trail", new Vector2(-3f, -8f), new Vector2(6f, 1.7f), pathColor, -8, false);
-        CreateRect(parent, "Deep Lake Trail", new Vector2(-5f, 4.5f), new Vector2(10f, 1.7f), pathColor, -8, false);
-        CreateRect(parent, "Southern Entrance", new Vector2(0f, -13f), new Vector2(2.2f, 8f), pathColor, -8, false);
-        CreateRect(parent, "Village Square", new Vector2(0f, -8f), new Vector2(8f, 5f), new Color(.57f, .49f, .30f), -7, false);
-        CreateRect(parent, "Market Path", new Vector2(-1.4f, -6.3f), new Vector2(1.5f, 3.3f), pathColor, -8, false);
+        CreateRect(parent, "Village Road", new Vector2(3.5f, -2.5f), new Vector2(9f, 2.2f), pathColor, -8, false);
+        CreateRect(parent, "Beginner Pond Trail", new Vector2(-.2f, -.9f), new Vector2(7.2f, 1.7f), pathColor, -8, false);
+        CreateRect(parent, "Southern Entrance", new Vector2(4f, -6.4f), new Vector2(2.2f, 5.2f), pathColor, -8, false);
+        CreateRect(parent, "Village Square", new Vector2(4.5f, -2.5f), new Vector2(8.5f, 4.2f), new Color(.57f, .49f, .30f), -7, false);
+        CreateRect(parent, "Pond Approach", new Vector2(-.8f, 0f), new Vector2(1.8f, 3.4f), pathColor, -8, false);
     }
 
     private void CreateFishingArea(Transform waterParent, Transform gameplayParent, FishingSpotDefinition spot, int index)
@@ -123,13 +119,12 @@ public sealed class PixelMapBuilder : MonoBehaviour
         Vector2 dockDirection = (spot.BobberPosition - spot.ShorePosition).normalized;
         bool horizontal = Mathf.Abs(dockDirection.x) > Mathf.Abs(dockDirection.y);
         Vector2 dockSize = horizontal ? new Vector2(1.15f, .72f) : new Vector2(.72f, 1.15f);
-        bool playable = index == 0;
-        CreateRect(gameplayParent, spot.DisplayName + (playable ? " Dock" : " Future Dock"), Vector2.Lerp(spot.ShorePosition, spot.BobberPosition, .28f),
-            dockSize, playable ? new Color(.48f, .29f, .15f) : new Color(.28f, .28f, .28f), 0, false);
+        CreateRect(gameplayParent, spot.DisplayName + " Dock", Vector2.Lerp(spot.ShorePosition, spot.BobberPosition, .28f),
+            dockSize, new Color(.48f, .29f, .15f), 0, false);
 
         GameObject marker = CreateRect(gameplayParent, spot.DisplayName + " Fishing Marker",
             spot.ShorePosition + new Vector2(0f, .18f), new Vector2(.34f, .34f),
-            playable ? new Color(.75f, .94f, .40f) : new Color(.38f, .40f, .40f),
+            new Color(.75f, .94f, .40f),
             1, false);
         marker.transform.rotation = Quaternion.Euler(0f, 0f, 45f);
     }
@@ -143,20 +138,19 @@ public sealed class PixelMapBuilder : MonoBehaviour
 
         Vector2[] treePositions =
         {
-            new(-20f,-13f), new(-17f,-13f), new(-13f,-13f), new(13f,-13f), new(17f,-13f), new(20f,-13f),
-            new(-20f,-4f), new(-18f,0f), new(-20f,5f), new(-19f,11f), new(-15f,13f),
-            new(20f,-5f), new(19f,0f), new(20f,6f), new(18f,11f), new(14f,13f),
-            new(-4f,11.5f), new(2.8f,11f), new(6f,8f), new(8f,6.5f), new(14.5f,6f),
-            new(-15.5f,2.5f), new(-14f,-2f), new(-13f,-5f), new(8f,-7f), new(12f,-7f), new(15f,-9f)
+            new(-11f,-8f), new(-8f,-8f), new(-4f,-8f), new(8f,-8f), new(11f,-8f),
+            new(-11f,-4f), new(-10.5f,1f), new(-11f,6f), new(-8f,8f), new(-2f,7.5f),
+            new(3f,7f), new(7f,8f), new(11f,6f), new(10.5f,2f), new(11f,-3f),
+            new(-8.5f,4.5f), new(7.5f,4.5f)
         };
         if (treeTexture != null)
             foreach (Vector2 position in treePositions) CreateSpriteDecoration(parent, "Tree", treeTexture, position, 32f, 2, true);
 
         Vector2[] grassPositions =
         {
-            new(-18f,-9f), new(-15f,-7f), new(-13f,-11f), new(-7f,-12f), new(7f,-12f), new(11f,-10f),
-            new(-16f,7f), new(-15f,11f), new(-5f,8f), new(-3f,6f), new(4f,7f), new(7f,10f),
-            new(15f,3f), new(16f,-1f), new(15f,-4f), new(4f,-3f), new(-5f,-3f), new(-2f,1f)
+            new(-9f,-6f), new(-6f,-7f), new(-1f,-6f), new(8f,-6f), new(10f,-5f),
+            new(-9f,6f), new(-3f,6f), new(2f,5f), new(6f,6f), new(9f,4f),
+            new(9f,0f), new(1f,1.5f), new(-1f,3f), new(2f,-4.5f)
         };
         if (grassTexture != null)
             foreach (Vector2 position in grassPositions) CreateSpriteDecoration(parent, "Grass", grassTexture, position, 32f, -1, false);

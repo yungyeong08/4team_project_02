@@ -8,7 +8,7 @@ public static class FishingPreviewTools
 {
     private const string FishingScenePath = "Assets/Scenes/FishingDemo.unity";
     private const string SmokeTestSessionKey = "Fishing.PlayModeSmokeTest";
-    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.EarlyGameV2";
+    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.EarlyGameV3";
 
     private const string MapConfigPath = "Assets/Resources/Data/FishingMapConfig.asset";
     private const string BalanceConfigPath = "Assets/Resources/Data/FishingBalanceConfig.asset";
@@ -49,7 +49,7 @@ public static class FishingPreviewTools
         EditorSceneManager.MarkSceneDirty(scene);
         EditorSceneManager.SaveScene(scene);
         AssetDatabase.SaveAssets();
-        Debug.Log("Fishing map preview rebuilt with three configured fishing spots.");
+        Debug.Log("Fishing starter map preview rebuilt with the first fishing spot.");
     }
 
     // Public entry point for command-line validation and repeatable scene generation.
@@ -185,7 +185,7 @@ public static class FishingPreviewTools
             PixelMapBuilder builder = Object.FindFirstObjectByType<PixelMapBuilder>();
             PixelCharacter player = Object.FindFirstObjectByType<PixelCharacter>();
             if (builder == null || player == null) throw new System.InvalidOperationException("Runtime map or player was not created.");
-            if (builder.FishingSpots.Count != 3) throw new System.InvalidOperationException("Runtime map does not contain three spots.");
+            if (builder.FishingSpots.Count != 1) throw new System.InvalidOperationException("Runtime starter map must contain only the first fishing spot.");
             if (builder.FishingShop == null || builder.FishMarket == null) throw new System.InvalidOperationException("Shop objects were not created.");
 
             FishingGameController controller = Object.FindFirstObjectByType<FishingGameController>();
@@ -210,7 +210,7 @@ public static class FishingPreviewTools
                 player.transform.position = spot.ShorePosition;
                 Physics2D.SyncTransforms();
                 FishingSpotDefinition found = builder.GetNearestFishingSpot(player.transform.position);
-                if ((i == 0 && found != spot) || (i > 0 && found != null))
+                if (found != spot)
                     throw new System.InvalidOperationException($"Early-area access check failed for {spot.DisplayName}.");
             }
 
@@ -225,7 +225,7 @@ public static class FishingPreviewTools
             market.CloseShop();
             player.transform.position = originalPosition;
 
-            Debug.Log("PLAYMODE_SMOKE_OK: first lake playable, later lakes locked, player/UI/progression components, both shops, and equipped rod verified.");
+            Debug.Log("PLAYMODE_SMOKE_OK: first-lake-only map, player/UI/progression components, both shops, and equipped rod verified.");
             SessionState.SetBool(SmokeTestSessionKey, false);
             FinishSmokeTest(0);
         }
@@ -249,11 +249,6 @@ public static class FishingPreviewTools
         FishingMapConfig config = EnsureMapConfig();
         if (config.FishingSpots.Count != 3)
             throw new System.InvalidOperationException($"Expected 3 fishing spots, found {config.FishingSpots.Count}.");
-
-        if (Vector2.Distance(config.FishingSpots[0].ShorePosition, config.FishingSpots[1].ShorePosition) < 8f ||
-            Vector2.Distance(config.FishingSpots[1].ShorePosition, config.FishingSpots[2].ShorePosition) < 8f ||
-            Vector2.Distance(config.FishingSpots[0].ShorePosition, config.FishingSpots[2].ShorePosition) < 8f)
-            throw new System.InvalidOperationException("Fishing spots are too close together.");
 
         if (config.FishingSpots[0].GetWeight(FishRarity.Epic) > 0f || config.FishingSpots[0].GetWeight(FishRarity.Legendary) > 0f)
             throw new System.InvalidOperationException("Beginner pond must not contain Epic or Legendary fish.");
@@ -279,10 +274,15 @@ public static class FishingPreviewTools
 
         Scene scene = SceneManager.GetActiveScene();
         PixelMapBuilder builder = Object.FindFirstObjectByType<PixelMapBuilder>();
-        if (scene.path == FishingScenePath && (builder == null || builder.FishingSpots.Count != 3))
-            throw new System.InvalidOperationException("Fishing scene preview was not generated correctly.");
+        if (scene.path == FishingScenePath)
+        {
+            if (builder == null) throw new System.InvalidOperationException("Fishing scene preview has no map builder.");
+            builder.Build();
+            if (builder.FishingSpots.Count != 1)
+                throw new System.InvalidOperationException("Fishing scene preview must contain only the first lake.");
+        }
 
-        Debug.Log("MAP_VALIDATION_OK: 3 fishing spots, spacing, rarity tables, difficulty progression, selection samples, and scene preview verified.");
+        Debug.Log("MAP_VALIDATION_OK: 3 future spot definitions, first-lake-only scene, rarity tables, difficulty progression, and selection samples verified.");
     }
 
     private static FishingMapConfig EnsureMapConfig()

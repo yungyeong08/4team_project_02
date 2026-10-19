@@ -5,24 +5,43 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "FishingMapConfig", menuName = "Fishing/Fishing Map Config")]
 public sealed class FishingMapConfig : ScriptableObject
 {
-    public Vector2 MapSize = new(44f, 30f);
-    public Vector2 PlayerStart = new(0f, -10f);
-    public Vector2 FishingShopPosition = new(3f, -7.5f);
-    public Vector2 FishMarketPosition = new(-1.5f, -5.5f);
+    public Vector2 MapSize = new(24f, 18f);
+    public Vector2 PlayerStart = new(4f, -6f);
+    public Vector2 FishingShopPosition = new(7f, -2.5f);
+    public Vector2 FishMarketPosition = new(3.5f, -2.5f);
     public List<FishingSpotDefinition> FishingSpots = new();
 
     public void ApplyDefaults()
     {
-        MapSize = new Vector2(44f, 30f);
-        PlayerStart = new Vector2(0f, -10f);
-        FishingShopPosition = new Vector2(3f, -7.5f);
-        FishMarketPosition = new Vector2(-1.5f, -5.5f);
+        MapSize = new Vector2(24f, 18f);
+        PlayerStart = new Vector2(4f, -6f);
+        FishingShopPosition = new Vector2(7f, -2.5f);
+        FishMarketPosition = new Vector2(3.5f, -2.5f);
         FishingSpots = CreateDefaultSpots();
     }
 
     public bool EnsureFirstAreaLayout()
     {
         bool changed = false;
+        // The first playable milestone uses a compact starter map. Keep the other
+        // spot definitions below as future content data without building them yet.
+        if (Vector2.Distance(MapSize, new Vector2(44f, 30f)) < .05f)
+        {
+            MapSize = new Vector2(24f, 18f);
+            PlayerStart = new Vector2(4f, -6f);
+            FishingShopPosition = new Vector2(7f, -2.5f);
+            FishMarketPosition = new Vector2(3.5f, -2.5f);
+            changed = true;
+        }
+
+        if (FishingSpots != null && FishingSpots.Count > 0 &&
+            FishingSpots[0] != null && FishingSpots[0].Id == "village_pond" &&
+            Vector2.Distance(FishingSpots[0].WaterCenter, new Vector2(-9f, -8f)) < .05f)
+        {
+            FishingSpots[0] = CreateDefaultSpots()[0];
+            changed = true;
+        }
+
         // Migrate the old test-map shop positions that overlapped the beginner fishing interaction.
         if (Vector2.Distance(FishingShopPosition, new Vector2(3.2f, -8f)) < .05f)
         {
@@ -43,8 +62,8 @@ public sealed class FishingMapConfig : ScriptableObject
         {
             new(
                 "village_pond", "마을 연못 · 초급",
-                new Vector2(-9f, -8f), new Vector2(7f, 5f),
-                new Vector2(-5.15f, -8f), new Vector2(-6.25f, -8f),
+                new Vector2(-5.5f, 0f), new Vector2(8f, 6f),
+                new Vector2(-1.15f, 0f), new Vector2(-2.25f, 0f),
                 1.65f, .9f,
                 new FishRarityWeight(FishRarity.Common, 70f),
                 new FishRarityWeight(FishRarity.Uncommon, 25f),

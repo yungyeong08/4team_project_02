@@ -12,17 +12,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 488ae741a1aeb6e4c88c1cf6dd7279dc, type: 3}
   m_Name: FishingMapConfig
   m_EditorClassIdentifier: Assembly-CSharp::FishingMapConfig
-  MapSize: {x: 44, y: 30}
-  PlayerStart: {x: 0, y: -10}
-  FishingShopPosition: {x: 3, y: -7.5}
-  FishMarketPosition: {x: -1.5, y: -5.5}
+  MapSize: {x: 24, y: 18}
+  PlayerStart: {x: 4, y: -6}
+  FishingShopPosition: {x: 7, y: -2.5}
+  FishMarketPosition: {x: 3.5, y: -2.5}
   FishingSpots:
   - Id: village_pond
     DisplayName: "\uB9C8\uC744 \uC5F0\uBABB \xB7 \uCD08\uAE09"
-    WaterCenter: {x: -9, y: -8}
-    WaterSize: {x: 7, y: 5}
-    ShorePosition: {x: -5.15, y: -8}
-    BobberPosition: {x: -6.25, y: -8}
+    WaterCenter: {x: -5.5, y: 0}
+    WaterSize: {x: 8, y: 6}
+    ShorePosition: {x: -1.15, y: 0}
+    BobberPosition: {x: -2.25, y: 0}
     InteractionRange: 1.65
     DifficultyMultiplier: 0.9
     RarityWeights:
