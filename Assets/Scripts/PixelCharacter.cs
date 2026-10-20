@@ -11,6 +11,7 @@ public sealed class PixelCharacter : MonoBehaviour
     private bool isFishing;
     private bool facingUp;
     public float speed = 2.2f;
+    public float runSpeed = 4.4f;
 
     public void Setup()
     {
@@ -38,7 +39,10 @@ public sealed class PixelCharacter : MonoBehaviour
     {
         Vector2 movement = new(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         movement = movement.normalized;
-        Vector2 nextPosition = (Vector2)transform.position + movement * speed * Time.deltaTime;
+        float currentSpeed = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+        ? runSpeed : speed;
+
+        Vector2 nextPosition = (Vector2)transform.position + movement * currentSpeed * Time.deltaTime;
         Collider2D[] collisionBuffer = Physics2D.OverlapCircleAll(nextPosition, .14f);
         int hitCount = collisionBuffer.Length;
         bool blocked = false;
