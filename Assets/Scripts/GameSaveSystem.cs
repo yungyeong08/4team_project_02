@@ -6,7 +6,7 @@ using UnityEngine;
 [Serializable]
 public sealed class FishingGameSaveData
 {
-    public const int CurrentVersion = 4;
+    public const int CurrentVersion = 6;
     public int Version = CurrentVersion;
     public int Money = 100;
     public List<FishInventory.FishProgress> FishProgress = new();
@@ -37,6 +37,7 @@ public sealed class GameSaveSystem : MonoBehaviour
     private float dirtyAt;
 
     public string LastStatus { get; private set; } = "";
+    public event Action NewGameStarted;
     public bool HasSaveData => File.Exists(SavePath) || File.Exists(BackupPath);
     public string SavePath => Path.Combine(Application.persistentDataPath, SaveFileName);
     private string BackupPath => SavePath + ".bak";
@@ -179,6 +180,33 @@ public sealed class GameSaveSystem : MonoBehaviour
                 savedPosition.y = Mathf.Clamp(savedPosition.y, -halfHeight, halfHeight);
             }
             player.position = savedPosition;
+            // v6 introduces the prologue and aligns the quest data with the tutorial's
+            // first catch -> first sale -> rod purchase order. Existing saves continue
+            // without replaying the story and are moved onto the matching objective.
+            if (data.Version < 6 && data.EarlyGameProgress != null)
+            {
+                data.EarlyGameProgress.OpeningSeen = true;
+                EarlyTutorialStep savedStep = (EarlyTutorialStep)Mathf.Clamp(data.EarlyGameProgress.TutorialStep,
+                    0, (int)EarlyTutorialStep.Complete);
+                bool finishedOldQuestLine = data.EarlyGameProgress.NextRegionReady ||
+                    (data.EarlyGameProgress.CompletedQuestIds?.Contains("use_new_rod") ?? false);
+                if (finishedOldQuestLine)
+                {
+                    data.EarlyGameProgress.TutorialStep = (int)EarlyTutorialStep.Complete;
+                    data.EarlyGameProgress.ActiveQuestId = "";
+                    data.EarlyGameProgress.QuestProgress = 0;
+                }
+                else if (savedStep is EarlyTutorialStep.ReachFishMarket or EarlyTutorialStep.SellFish)
+                {
+                    data.EarlyGameProgress.ActiveQuestId = "first_sale";
+                    data.EarlyGameProgress.QuestProgress = 0;
+                }
+                else if (savedStep is EarlyTutorialStep.ReachRodShop or EarlyTutorialStep.BuyUpgradeRod)
+                {
+                    data.EarlyGameProgress.ActiveQuestId = "rod_upgrade";
+                    data.EarlyGameProgress.QuestProgress = 0;
+                }
+            }
             earlyGameProgress?.Restore(data.EarlyGameProgress);
             // Persist the migrated starter position shortly after an older save loads,
             // otherwise the same legacy position would be migrated on every launch.
@@ -239,6 +267,7 @@ public sealed class GameSaveSystem : MonoBehaviour
         earlyGameProgress?.ResetProgress();
         dirty = false;
         LastStatus = "새 게임으로 시작했습니다.";
+        NewGameStarted?.Invoke();
     }
 
     public bool ResetGame()

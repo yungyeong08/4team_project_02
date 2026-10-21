@@ -17,7 +17,21 @@ public sealed class FishingBalanceConfig : ScriptableObject
     public bool EnsureValid()
     {
         bool changed = false;
-        if (Fish == null || Fish.Count == 0) { Fish = FishCatalog.CreateDefault(); changed = true; }
+        List<FishDefinition> defaultFish = FishCatalog.CreateDefault();
+        if (Fish == null || Fish.Count == 0)
+        {
+            Fish = defaultFish;
+            changed = true;
+        }
+        else
+        {
+            foreach (FishDefinition definition in defaultFish)
+            {
+                if (definition == null || Fish.Exists(fish => fish != null && fish.Id == definition.Id)) continue;
+                Fish.Add(definition);
+                changed = true;
+            }
+        }
         if (Rods == null || Rods.Count == 0) { Rods = FishingRodCatalog.CreateDefault(); changed = true; }
         if (Fish != null)
             foreach (FishDefinition fish in Fish)

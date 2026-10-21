@@ -73,6 +73,66 @@ MonoBehaviour:
     DirectionImpulse: 0.17
     CatchRate: 0.26
     EscapeRate: 0.19
+  - Id: squid
+    DisplayName: "\uC624\uC9D5\uC5B4"
+    Icon: {fileID: 2800000, guid: 80840c0570a75594aa9744104214e7a1, type: 3}
+    Rarity: 2
+    SalePrice: 780
+    ReelZoneSize: 0.18
+    MovementAcceleration: 0.36
+    MaxSpeed: 0.44
+    DirectionChangeInterval: 0.85
+    DirectionImpulse: 0.2
+    CatchRate: 0.23
+    EscapeRate: 0.22
+  - Id: pufferfish
+    DisplayName: "\uBCF5\uC5B4"
+    Icon: {fileID: 2800000, guid: 67d082430f9d5244e825b14fa6f0d767, type: 3}
+    Rarity: 1
+    SalePrice: 580
+    ReelZoneSize: 0.21
+    MovementAcceleration: 0.3
+    MaxSpeed: 0.38
+    DirectionChangeInterval: 1.1
+    DirectionImpulse: 0.16
+    CatchRate: 0.27
+    EscapeRate: 0.18
+  - Id: crucian_carp
+    DisplayName: "\uBD95\uC5B4"
+    Icon: {fileID: 2800000, guid: 06dca80a370211842af680afbf7f5e20, type: 3}
+    Rarity: 0
+    SalePrice: 160
+    ReelZoneSize: 0.3
+    MovementAcceleration: 0.13
+    MaxSpeed: 0.21
+    DirectionChangeInterval: 2
+    DirectionImpulse: 0.07
+    CatchRate: 0.36
+    EscapeRate: 0.1
+  - Id: swordfish
+    DisplayName: "\uD669\uC0C8\uCE58"
+    Icon: {fileID: 2800000, guid: b9e0e1ece0bd440439a4050c34f65853, type: 3}
+    Rarity: 3
+    SalePrice: 1900
+    ReelZoneSize: 0.15
+    MovementAcceleration: 0.5
+    MaxSpeed: 0.58
+    DirectionChangeInterval: 0.58
+    DirectionImpulse: 0.29
+    CatchRate: 0.18
+    EscapeRate: 0.29
+  - Id: bluefin_tuna
+    DisplayName: "\uCC38\uB2E4\uB791\uC5B4"
+    Icon: {fileID: 2800000, guid: 6008a908130808b4eb29464874f4799f, type: 3}
+    Rarity: 4
+    SalePrice: 3200
+    ReelZoneSize: 0.13
+    MovementAcceleration: 0.58
+    MaxSpeed: 0.66
+    DirectionChangeInterval: 0.44
+    DirectionImpulse: 0.34
+    CatchRate: 0.16
+    EscapeRate: 0.34
   Rods:
   - Id: basic_rod
     DisplayName: "\uB0A1\uC740 \uB09A\uC2EF\uB300"

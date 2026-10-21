@@ -117,4 +117,18 @@ public sealed class FishInventory : MonoBehaviour
             return total;
         }
     }
+
+    public int TotalLifetimeCaught
+    {
+        get
+        {
+            int total = 0;
+            foreach (FishProgress stack in fishProgress)
+            {
+                if (stack == null) continue;
+                total = (int)Math.Min(int.MaxValue, (long)total + Mathf.Max(0, stack.LifetimeCaught));
+            }
+            return total;
+        }
+    }
 }

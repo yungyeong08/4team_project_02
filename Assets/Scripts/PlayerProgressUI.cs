@@ -22,6 +22,12 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private InventoryTab inventoryTab;
     private Vector2 scrollPosition;
     private string statusMessage = "";
+    private int lastBalance;
+    private int balanceDelta;
+    private float balanceFeedbackTimer;
+    private FishingAudioDirector audioDirector;
+    private float modalReveal;
+    private bool modalClosing;
 
     public bool IsBlockingGameplay => windowMode != WindowMode.None;
     public bool IsInventoryOpen => windowMode == WindowMode.Inventory;
@@ -50,10 +56,34 @@ public sealed class PlayerProgressUI : MonoBehaviour
         shop = shopSystem;
         market = marketSystem;
         earlyGameProgress = questSystem;
+        lastBalance = wallet != null ? wallet.Balance : 0;
+        if (wallet != null) wallet.BalanceChanged += OnBalanceChanged;
+    }
+
+    public void SetAudio(FishingAudioDirector audio) => audioDirector = audio;
+
+    private void OnBalanceChanged(int newBalance)
+    {
+        balanceDelta = newBalance - lastBalance;
+        lastBalance = newBalance;
+        if (balanceDelta != 0) balanceFeedbackTimer = 1.25f;
     }
 
     private void Update()
     {
+        if (balanceFeedbackTimer > 0f) balanceFeedbackTimer -= Time.unscaledDeltaTime;
+        if (windowMode != WindowMode.None)
+        {
+            modalReveal = Mathf.MoveTowards(modalReveal, modalClosing ? 0f : 1f, Time.unscaledDeltaTime * 6f);
+            if (modalClosing && modalReveal <= 0f)
+            {
+                windowMode = WindowMode.None;
+                modalClosing = false;
+                Time.timeScale = 1f;
+            }
+        }
+        if (fishingController != null && fishingController.IsCinematicActive) return;
+        if (modalClosing) return;
         bool externalWindowOpen = (shop != null && shop.IsOpen) || (market != null && market.IsOpen);
         bool fishingActive = fishingController != null && fishingController.IsFishingActive;
 
@@ -79,7 +109,10 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void OpenWindow(WindowMode mode)
     {
+        audioDirector?.PlayUiClick();
         windowMode = mode;
+        modalClosing = false;
+        modalReveal = 0f;
         scrollPosition = Vector2.zero;
         statusMessage = "";
         if (mode == WindowMode.Pause || mode == WindowMode.MainMenu || mode == WindowMode.ResetConfirm) Time.timeScale = 0f;
@@ -88,8 +121,9 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void CloseWindow()
     {
-        windowMode = WindowMode.None;
-        Time.timeScale = 1f;
+        if (windowMode == WindowMode.None || modalClosing) return;
+        audioDirector?.PlayUiClick();
+        modalClosing = true;
     }
 
     private void OnDisable()
@@ -97,8 +131,14 @@ public sealed class PlayerProgressUI : MonoBehaviour
         if (Time.timeScale == 0f) Time.timeScale = 1f;
     }
 
+    private void OnDestroy()
+    {
+        if (wallet != null) wallet.BalanceChanged -= OnBalanceChanged;
+    }
+
     private void OnGUI()
     {
+        if (fishingController != null && fishingController.IsCinematicActive) return;
         float uiScale = Mathf.Clamp(Screen.height / 1080f, .8f, 2f);
         Matrix4x4 previousMatrix = GUI.matrix;
         GUI.matrix = Matrix4x4.Scale(new Vector3(uiScale, uiScale, 1f));
@@ -113,6 +153,9 @@ public sealed class PlayerProgressUI : MonoBehaviour
             return;
         }
 
+        float reveal = Mathf.SmoothStep(0f, 1f, modalReveal);
+        Color previousColor = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, reveal);
         FishingUiTheme.DrawDim(new Rect(0f, 0f, screenWidth, screenHeight));
 
         if (windowMode == WindowMode.Inventory) DrawInventory(screenWidth, screenHeight);
@@ -121,32 +164,53 @@ public sealed class PlayerProgressUI : MonoBehaviour
         else if (windowMode == WindowMode.MainMenu) DrawMainMenu(screenWidth, screenHeight);
         else DrawResetConfirm(screenWidth, screenHeight);
 
+        GUI.color = previousColor;
         GUI.matrix = previousMatrix;
     }
 
     private void DrawShortcutHint(float screenWidth, float screenHeight)
     {
-        if ((shop != null && (shop.IsOpen || shop.IsPlayerInRange)) ||
-            (market != null && (market.IsOpen || market.IsPlayerInRange)) ||
-            (fishingController != null && fishingController.IsFishingActive)) return;
+        if ((shop != null && shop.IsOpen) || (market != null && market.IsOpen) ||
+            (fishingController != null && (fishingController.IsFishingActive || fishingController.IsResultVisible))) return;
 
+        FishingHudSettings hud = FishingUiTheme.Settings;
         FishingRodDefinition equipped = rodInventory?.GetEquipped(rodCatalog);
-        // Compact game HUD: resource chip, equipped item slot, and key prompts.
-        FishingUiTheme.DrawMoneyChip(new Rect(18f, 84f, 210f, 40f), wallet != null ? wallet.Balance : 0);
-        var rodChip = new Rect(18f, 132f, 310f, 46f);
-        FishingUiTheme.DrawSlot(rodChip, equipped != null ? equipped.RarityColor : FishingUiTheme.Muted, equipped != null);
-        GUI.Label(new Rect(rodChip.x + 18f, rodChip.y + 3f, rodChip.width - 28f, 20f), "현재 장비", FishingUiTheme.Small);
-        GUI.Label(new Rect(rodChip.x + 18f, rodChip.y + 20f, rodChip.width - 28f, 23f),
-            equipped != null ? equipped.DisplayName : "낚싯대 없음", FishingUiTheme.Heading);
+        float sideWidth = Mathf.Min(hud.SidePanelWidth, (screenWidth - hud.ScreenMargin * 4f) * .25f);
+        var statusPanel = new Rect(hud.ScreenMargin, hud.ScreenMargin, sideWidth, hud.TopPanelHeight);
+        Color rodColor = equipped != null ? equipped.RarityColor : FishingUiTheme.Muted;
+        FishingUiTheme.DrawHudPanel(statusPanel, "플레이어 상태", rodColor);
+        FishingUiTheme.DrawMoneyChip(new Rect(statusPanel.x + 16f, statusPanel.y + 28f, 170f, 34f),
+            wallet != null ? wallet.Balance : 0);
+        if (balanceFeedbackTimer > 0f && balanceDelta != 0)
+        {
+            float alpha = Mathf.Clamp01(balanceFeedbackTimer * 2f);
+            Color color = balanceDelta > 0 ? FishingUiTheme.Gold : FishingUiTheme.Danger;
+            color.a *= alpha;
+            FishingUiTheme.ColoredLabel(new Rect(statusPanel.x + 190f, statusPanel.y + 31f, statusPanel.width - 202f, 28f),
+                $"{(balanceDelta > 0 ? "+" : "")}{balanceDelta:N0} G", FishingUiTheme.Heading, color);
+        }
 
-        var rect = new Rect(18f, screenHeight - 58f, 490f, 40f);
-        FishingUiTheme.DrawPanel(rect, true);
-        GUI.Label(new Rect(rect.x + 10f, rect.y + 7f, 32f, 26f), "I", FishingUiTheme.Keycap);
-        GUI.Label(new Rect(rect.x + 46f, rect.y, 86f, rect.height), "가방", FishingUiTheme.SmallCentered);
-        GUI.Label(new Rect(rect.x + 138f, rect.y + 7f, 32f, 26f), "C", FishingUiTheme.Keycap);
-        GUI.Label(new Rect(rect.x + 174f, rect.y, 94f, rect.height), "도감", FishingUiTheme.SmallCentered);
-        GUI.Label(new Rect(rect.x + 278f, rect.y + 7f, 58f, 26f), "ESC", FishingUiTheme.Keycap);
-        GUI.Label(new Rect(rect.x + 342f, rect.y, 132f, rect.height), "메뉴", FishingUiTheme.SmallCentered);
+        var rodChip = new Rect(statusPanel.x + 16f, statusPanel.y + 70f, statusPanel.width - 32f, 34f);
+        FishingUiTheme.DrawCard(rodChip, true);
+        FishingUiTheme.DrawHudIcon(new Rect(rodChip.x + 8f, rodChip.y + 5f, 24f, 24f), FishingUiTheme.HudIcon.Rod, rodColor);
+        GUI.Label(new Rect(rodChip.x + 42f, rodChip.y, 78f, rodChip.height), "장착", FishingUiTheme.SmallCentered);
+        FishingUiTheme.ColoredLabel(new Rect(rodChip.x + 112f, rodChip.y, rodChip.width - 122f, rodChip.height),
+            equipped != null ? equipped.DisplayName : "낚싯대 없음", FishingUiTheme.Body, rodColor);
+
+        float buttonWidth = hud.MenuButtonWidth;
+        float buttonHeight = hud.MenuButtonHeight;
+        float gap = 10f;
+        float menuY = screenHeight - hud.ScreenMargin - buttonHeight;
+        float menuX = hud.ScreenMargin;
+        if (FishingUiTheme.DrawMenuButton(new Rect(menuX, menuY, buttonWidth, buttonHeight),
+                FishingUiTheme.HudIcon.Bag, "가방", "I"))
+            OpenWindow(WindowMode.Inventory);
+        if (FishingUiTheme.DrawMenuButton(new Rect(menuX + buttonWidth + gap, menuY, buttonWidth, buttonHeight),
+                FishingUiTheme.HudIcon.Book, "도감", "C"))
+            OpenWindow(WindowMode.Codex);
+        if (FishingUiTheme.DrawMenuButton(new Rect(menuX + (buttonWidth + gap) * 2f, menuY, buttonWidth, buttonHeight),
+                FishingUiTheme.HudIcon.Menu, "메뉴", "ESC"))
+            OpenWindow(WindowMode.Pause);
     }
 
     private Rect BeginLargePanel(float screenWidth, float screenHeight, string title)

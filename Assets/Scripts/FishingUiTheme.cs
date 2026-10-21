@@ -1,22 +1,46 @@
 using UnityEngine;
 
+/// <summary>Inspector-facing layout and palette for the in-game HUD.</summary>
+[System.Serializable]
+public sealed class FishingHudSettings
+{
+    [Header("HUD Layout")]
+    [Range(10f, 40f)] public float ScreenMargin = 18f;
+    [Range(280f, 420f)] public float SidePanelWidth = 340f;
+    [Range(400f, 680f)] public float CenterBannerWidth = 520f;
+    [Range(90f, 160f)] public float TopPanelHeight = 116f;
+    [Range(4f, 15f)] public float TutorialDisplaySeconds = 7f;
+    [Range(120f, 190f)] public float MenuButtonWidth = 148f;
+    [Range(44f, 72f)] public float MenuButtonHeight = 54f;
+
+    [Header("HUD Palette")]
+    public Color PrimaryPanel = new(.055f, .10f, .12f, .96f);
+    public Color SecondaryPanel = new(.075f, .145f, .16f, .95f);
+    public Color CardPanel = new(.09f, .17f, .18f, .96f);
+    public Color Accent = new(.12f, .61f, .55f, 1f);
+    public Color Highlight = new(.35f, .91f, .68f, 1f);
+    public Color Reward = new(.98f, .73f, .25f, 1f);
+}
+
 /// <summary>Temporary flat IMGUI skin. Final art can replace this without changing game logic.</summary>
 public static class FishingUiTheme
 {
-    public static readonly Color Ink = new(.035f, .047f, .055f, 1f);
-    public static readonly Color Panel = new(.055f, .10f, .12f, 1f);
-    public static readonly Color PanelLight = new(.075f, .145f, .16f, 1f);
-    public static readonly Color Card = new(.09f, .17f, .18f, 1f);
-    public static readonly Color CardAlt = new(.065f, .125f, .14f, 1f);
+    public enum HudIcon { Bag, Book, Menu, Rod }
+
+    public static Color Ink { get; private set; } = new(.035f, .047f, .055f, 1f);
+    public static Color Panel { get; private set; } = new(.055f, .10f, .12f, .96f);
+    public static Color PanelLight { get; private set; } = new(.075f, .145f, .16f, .95f);
+    public static Color Card { get; private set; } = new(.09f, .17f, .18f, .96f);
+    public static Color CardAlt { get; private set; } = new(.065f, .125f, .14f, .96f);
     public static readonly Color Cream = new(.98f, .93f, .78f, 1f);
     public static readonly Color Muted = new(.64f, .72f, .68f, 1f);
-    public static readonly Color Accent = new(.12f, .61f, .55f, 1f);
-    public static readonly Color AccentBright = new(.35f, .91f, .68f, 1f);
+    public static Color Accent { get; private set; } = new(.12f, .61f, .55f, 1f);
+    public static Color AccentBright { get; private set; } = new(.35f, .91f, .68f, 1f);
     public static readonly Color Water = new(.09f, .35f, .48f, 1f);
     public static readonly Color WaterBright = new(.22f, .67f, .76f, 1f);
     public static readonly Color Wood = new(.075f, .13f, .15f, 1f);
     public static readonly Color WoodLight = new(.22f, .43f, .44f, 1f);
-    public static readonly Color Gold = new(.98f, .73f, .25f, 1f);
+    public static Color Gold { get; private set; } = new(.98f, .73f, .25f, 1f);
     public static readonly Color Danger = new(.91f, .30f, .25f, 1f);
 
     public static GUIStyle Title { get; private set; }
@@ -34,6 +58,11 @@ public static class FishingUiTheme
     public static GUIStyle Tab { get; private set; }
     public static GUIStyle ActiveTab { get; private set; }
     public static GUIStyle Keycap { get; private set; }
+    public static GUIStyle HudCaption { get; private set; }
+    public static GUIStyle HudTitle { get; private set; }
+    public static GUIStyle HudAction { get; private set; }
+
+    public static FishingHudSettings Settings { get; private set; } = new();
 
     private static GUIStyle panelStyle;
     private static GUIStyle panelLightStyle;
@@ -61,6 +90,19 @@ public static class FishingUiTheme
     private static Texture2D dimTexture;
     private static Texture2D trackTexture;
     private static bool initialized;
+
+    public static void Configure(FishingHudSettings settings)
+    {
+        Settings = settings ?? new FishingHudSettings();
+        Panel = Settings.PrimaryPanel;
+        PanelLight = Settings.SecondaryPanel;
+        Card = Settings.CardPanel;
+        CardAlt = Color.Lerp(Settings.PrimaryPanel, Settings.SecondaryPanel, .42f);
+        Accent = Settings.Accent;
+        AccentBright = Settings.Highlight;
+        Gold = Settings.Reward;
+        initialized = false;
+    }
 
     public static void Ensure()
     {
@@ -112,6 +154,9 @@ public static class FishingUiTheme
         Keycap = CreateButton(keyTexture, keyTexture, buttonActiveTexture, Cream);
         Keycap.fontSize = 14;
         Keycap.padding = new RectOffset(5, 5, 3, 4);
+        HudCaption = Label(12, FontStyle.Bold, TextAnchor.MiddleLeft, Muted);
+        HudTitle = Label(20, FontStyle.Bold, TextAnchor.MiddleCenter, Cream);
+        HudAction = Label(15, FontStyle.Normal, TextAnchor.MiddleCenter, AccentBright);
     }
 
     public static void DrawDim(Rect rect)
@@ -167,6 +212,73 @@ public static class FishingUiTheme
         Rect keyRect = new(rect.x + 10f, rect.y + 8f, 40f, rect.height - 16f);
         GUI.Label(keyRect, key, Keycap);
         GUI.Label(new Rect(rect.x + 60f, rect.y + 2f, rect.width - 70f, rect.height - 4f), label, BodyCentered);
+    }
+
+    public static void DrawHudPanel(Rect rect, string caption, Color accent, bool emphasized = false)
+    {
+        Ensure();
+        GUI.Box(rect, GUIContent.none, emphasized ? panelLightStyle : panelStyle);
+        DrawSolid(new Rect(rect.x + 4f, rect.y + 4f, 5f, rect.height - 8f), accent);
+        if (!string.IsNullOrWhiteSpace(caption))
+            ColoredLabel(new Rect(rect.x + 16f, rect.y + 7f, rect.width - 28f, 18f), caption, HudCaption, accent);
+    }
+
+    public static void DrawLocationBanner(Rect rect, string location, string action, bool actionable, float actionAlpha = 1f)
+    {
+        Ensure();
+        DrawHudPanel(rect, "현재 지역", actionable ? AccentBright : WaterBright, actionable);
+        GUI.Label(new Rect(rect.x + 18f, rect.y + 25f, rect.width - 36f, 30f), location, HudTitle);
+        Color actionColor = actionable ? AccentBright : Muted;
+        actionColor.a *= Mathf.Clamp01(actionAlpha);
+        ColoredLabel(new Rect(rect.x + 18f, rect.y + 56f, rect.width - 36f, 25f), action, HudAction, actionColor);
+    }
+
+    public static void DrawTutorialGuide(Rect rect, string text)
+    {
+        Ensure();
+        DrawHudPanel(rect, "GUIDE", Gold, true);
+        GUI.Label(new Rect(rect.x + 76f, rect.y + 5f, rect.width - 90f, rect.height - 10f), text, BodyCentered);
+    }
+
+    public static bool DrawMenuButton(Rect rect, HudIcon icon, string label, string key)
+    {
+        Ensure();
+        bool clicked = GUI.Button(rect, GUIContent.none, Button);
+        Rect iconRect = new(rect.x + 12f, rect.y + 13f, 28f, 28f);
+        DrawHudIcon(iconRect, icon, AccentBright);
+        float keyWidth = key != null && key.Length > 1 ? 42f : 32f;
+        GUI.Label(new Rect(rect.x + 47f, rect.y + 5f, rect.width - keyWidth - 62f, rect.height - 10f), label, BodyCentered);
+        GUI.Label(new Rect(rect.xMax - keyWidth - 11f, rect.y + 14f, keyWidth, rect.height - 28f), key, Keycap);
+        return clicked;
+    }
+
+    public static void DrawHudIcon(Rect rect, HudIcon icon, Color color)
+    {
+        Ensure();
+        float t = 3f;
+        if (icon == HudIcon.Bag)
+        {
+            DrawFlatOutline(new Rect(rect.x + 3f, rect.y + 8f, rect.width - 6f, rect.height - 11f), color, t);
+            DrawFlatOutline(new Rect(rect.x + 9f, rect.y + 2f, rect.width - 18f, 10f), color, t);
+        }
+        else if (icon == HudIcon.Book)
+        {
+            DrawFlatOutline(new Rect(rect.x + 1f, rect.y + 4f, rect.width * .46f, rect.height - 8f), color, 2f);
+            DrawFlatOutline(new Rect(rect.x + rect.width * .53f, rect.y + 4f, rect.width * .46f, rect.height - 8f), color, 2f);
+            DrawSolid(new Rect(rect.center.x - 1f, rect.y + 4f, 2f, rect.height - 8f), color);
+        }
+        else if (icon == HudIcon.Rod)
+        {
+            DrawSolid(new Rect(rect.x + 8f, rect.y + 3f, 3f, rect.height - 7f), color);
+            DrawSolid(new Rect(rect.x + 10f, rect.y + 3f, rect.width - 14f, 3f), color);
+            DrawSolid(new Rect(rect.xMax - 6f, rect.y + 5f, 2f, rect.height - 9f), color);
+        }
+        else
+        {
+            DrawSolid(new Rect(rect.x + 3f, rect.y + 5f, rect.width - 6f, 3f), color);
+            DrawSolid(new Rect(rect.x + 3f, rect.center.y - 1f, rect.width - 6f, 3f), color);
+            DrawSolid(new Rect(rect.x + 3f, rect.yMax - 8f, rect.width - 6f, 3f), color);
+        }
     }
 
     public static void DrawMoneyChip(Rect rect, int amount)

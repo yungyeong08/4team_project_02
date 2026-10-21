@@ -10,8 +10,14 @@ public sealed class PixelCharacter : MonoBehaviour
     private float frameTime;
     private bool isFishing;
     private bool facingUp;
+    private bool isMoving;
+    private bool isRunning;
     public float speed = 2.2f;
     public float runSpeed = 4.4f;
+
+    public bool IsMoving => isMoving;
+    public bool IsRunning => isRunning;
+    public bool IsFishing => isFishing;
 
     public void Setup()
     {
@@ -39,8 +45,8 @@ public sealed class PixelCharacter : MonoBehaviour
     {
         Vector2 movement = new(Input.GetAxisRaw("Horizontal"), Input.GetAxisRaw("Vertical"));
         movement = movement.normalized;
-        float currentSpeed = (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-        ? runSpeed : speed;
+        isRunning = Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift);
+        float currentSpeed = isRunning ? runSpeed : speed;
 
         Vector2 nextPosition = (Vector2)transform.position + movement * currentSpeed * Time.deltaTime;
         Collider2D[] collisionBuffer = Physics2D.OverlapCircleAll(nextPosition, .14f);
@@ -54,7 +60,7 @@ public sealed class PixelCharacter : MonoBehaviour
         else if (movement.y < -.01f) facingUp = false;
 
         frameTime += Time.deltaTime;
-        bool isMoving = movement.sqrMagnitude > .01f;
+        isMoving = movement.sqrMagnitude > .01f && !blocked;
         SetFrame(facingUp ? walkUp : walkDown, isMoving ? Mathf.FloorToInt(frameTime * 7f) : 0);
         if (Mathf.Abs(movement.x) > .01f) spriteRenderer.flipX = movement.x < 0;
         else spriteRenderer.flipX = false;
@@ -63,9 +69,21 @@ public sealed class PixelCharacter : MonoBehaviour
     public void SetFishing(bool value)
     {
         isFishing = value;
+        isMoving = false;
+        isRunning = false;
         frameTime = 0;
         if (value) SetFrame(fishingFrames, 0);
         else SetFrame(facingUp ? walkUp : walkDown, 0);
+    }
+
+    public void SetVisible(bool visible)
+    {
+        if (!visible)
+        {
+            isMoving = false;
+            isRunning = false;
+        }
+        if (spriteRenderer != null) spriteRenderer.enabled = visible;
     }
 
     private void Update()

@@ -68,15 +68,34 @@ public static class FishingPreviewTools
         if (balance.Rods == null || balance.Rods.Count < 2) throw new System.InvalidOperationException("Rod catalog needs a default rod and purchasable upgrades.");
         if (questConfig.Quests == null || questConfig.Quests.Count != 5)
             throw new System.InvalidOperationException("The first-area quest line must contain five quests.");
+        EarlyQuestDefinition firstCatchQuest = questConfig.Quests.Find(quest => quest.Id == "first_catch");
+        EarlyQuestDefinition firstSaleQuest = questConfig.Quests.Find(quest => quest.Id == "first_sale");
+        EarlyQuestDefinition rodUpgradeQuest = questConfig.Quests.Find(quest => quest.Id == "rod_upgrade");
+        EarlyQuestDefinition useNewRodQuest = questConfig.Quests.Find(quest => quest.Id == "use_new_rod");
+        EarlyQuestDefinition beginnerQuest = questConfig.Quests.Find(quest => quest.Id == "beginner_angler");
+        if (firstCatchQuest?.NextQuestId != "first_sale" || firstSaleQuest?.NextQuestId != "rod_upgrade" ||
+            rodUpgradeQuest?.NextQuestId != "use_new_rod" || useNewRodQuest?.NextQuestId != "beginner_angler" ||
+            beginnerQuest == null || !string.IsNullOrEmpty(beginnerQuest.NextQuestId))
+            throw new System.InvalidOperationException("The opening quest chain must follow catch -> sale -> rod -> use rod -> free play.");
 
         var fishIds = new System.Collections.Generic.HashSet<string>();
+        var rarities = new System.Collections.Generic.HashSet<FishRarity>();
         foreach (FishDefinition fish in balance.Fish)
         {
             if (fish == null || string.IsNullOrWhiteSpace(fish.Id) || !fishIds.Add(fish.Id))
                 throw new System.InvalidOperationException("Fish ids must be non-empty and unique.");
+            if (fish.Icon == null)
+                throw new System.InvalidOperationException($"Fish art is missing for {fish.Id}.");
             if (fish.SalePrice < 0 || fish.CatchRate <= 0f || fish.MaxSpeed < 0f)
                 throw new System.InvalidOperationException($"Invalid balance values for fish {fish.Id}.");
+            rarities.Add(fish.Rarity);
         }
+        foreach (FishDefinition defaultFish in FishCatalog.CreateDefault())
+            if (!fishIds.Contains(defaultFish.Id))
+                throw new System.InvalidOperationException($"Default fish is missing: {defaultFish.Id}.");
+        foreach (FishRarity rarity in System.Enum.GetValues(typeof(FishRarity)))
+            if (!rarities.Contains(rarity))
+                throw new System.InvalidOperationException($"Fish catalog has no {rarity} species.");
 
         var rodIds = new System.Collections.Generic.HashSet<string>();
         FishingRodDefinition previous = null;
@@ -109,12 +128,14 @@ public static class FishingPreviewTools
                 TutorialStep = (int)EarlyTutorialStep.ReachFishMarket,
                 ActiveQuestId = "first_sale",
                 QuestProgress = 0,
-                CompletedQuestIds = new System.Collections.Generic.List<string> { "first_catch", "beginner_angler" }
+                CompletedQuestIds = new System.Collections.Generic.List<string> { "first_catch", "beginner_angler" },
+                OpeningSeen = true
             }
         };
         FishingGameSaveData restored = JsonUtility.FromJson<FishingGameSaveData>(JsonUtility.ToJson(saveRoundTrip));
         if (restored == null || restored.Money != 777 || restored.FishProgress.Count != 1 || restored.FishProgress[0].LifetimeCaught != 5 ||
-            restored.EarlyGameProgress == null || restored.EarlyGameProgress.ActiveQuestId != "first_sale")
+            restored.EarlyGameProgress == null || restored.EarlyGameProgress.ActiveQuestId != "first_sale" ||
+            !restored.EarlyGameProgress.OpeningSeen || restored.Version != FishingGameSaveData.CurrentVersion)
             throw new System.InvalidOperationException("Save data JSON round trip failed.");
 
         var validationObject = new GameObject("Progression Validation (Temporary)");
@@ -375,6 +396,11 @@ public static class FishingPreviewTools
         changed |= SetFishArt(config, "northern_pike", "Assets/Art/Fish/Fish1.png");
         changed |= SetFishArt(config, "golden_salmon", "Assets/Art/Fish/Fish3.png");
         changed |= SetFishArt(config, "ancient_pike", "Assets/Art/Fish/Fish2.png");
+        changed |= SetFishArt(config, "squid", "Assets/Art/Fish/Fish6.png");
+        changed |= SetFishArt(config, "pufferfish", "Assets/Art/Fish/Fish7.png");
+        changed |= SetFishArt(config, "crucian_carp", "Assets/Art/Fish/Fish8.png");
+        changed |= SetFishArt(config, "swordfish", "Assets/Art/Fish/Fish9.png");
+        changed |= SetFishArt(config, "bluefin_tuna", "Assets/Art/Fish/Fish10.png");
         changed |= SetRodArt(config, "basic_rod", "Assets/Art/Fishing rod/fishing rod1.png");
         changed |= SetRodArt(config, "sturdy_rod", "Assets/Art/Fishing rod/fishing rod2.png");
         changed |= SetRodArt(config, "river_rod", "Assets/Art/Fishing rod/fishing rod3.png");

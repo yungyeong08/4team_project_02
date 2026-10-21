@@ -18,6 +18,10 @@ public sealed class FishingShopSystem : MonoBehaviour
     private string statusMessage = "상품을 선택해 주세요.";
     private float logicalScreenWidth;
     private float logicalScreenHeight;
+    private FishingAudioDirector audioDirector;
+    private float promptVisibility;
+    private float windowReveal;
+    private bool windowClosing;
 
     public bool IsOpen => isOpen;
     public bool IsPlayerInRange => isPlayerInRange;
@@ -43,16 +47,29 @@ public sealed class FishingShopSystem : MonoBehaviour
     }
 
     public void SetInputBlocker(System.Func<bool> blocker) => inputBlocked = blocker;
+    public void SetAudio(FishingAudioDirector audio) => audioDirector = audio;
 
     private void Update()
     {
         RefreshRange();
+        if (isOpen)
+        {
+            windowReveal = Mathf.MoveTowards(windowReveal, windowClosing ? 0f : 1f, Time.unscaledDeltaTime * 6f);
+            if (windowClosing && windowReveal <= 0f)
+            {
+                isOpen = false;
+                windowClosing = false;
+                statusMessage = "상품을 선택해 주세요.";
+            }
+        }
+        promptVisibility = Mathf.MoveTowards(promptVisibility, isPlayerInRange && !isOpen ? 1f : 0f,
+            Time.unscaledDeltaTime * 6f);
 
         if (!isOpen && inputBlocked != null && inputBlocked()) return;
 
         if (isOpen)
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) CloseShop();
+            if (!windowClosing && Input.GetKeyDown(KeyCode.Escape)) CloseShop();
             return;
         }
 
@@ -69,14 +86,16 @@ public sealed class FishingShopSystem : MonoBehaviour
     {
         if (isOpen || !isPlayerInRange) return false;
         isOpen = true;
+        windowClosing = false;
+        windowReveal = 0f;
         statusMessage = "상품을 선택해 주세요.";
         return true;
     }
 
     public void CloseShop()
     {
-        isOpen = false;
-        statusMessage = "상품을 선택해 주세요.";
+        if (!isOpen || windowClosing) return;
+        windowClosing = true;
     }
 
     public bool TryPurchase(string productId)
@@ -108,6 +127,7 @@ public sealed class FishingShopSystem : MonoBehaviour
         }
 
         statusMessage = product.DisplayName + " 구매 완료! 자동으로 장착했습니다.";
+        audioDirector?.PlaySell(false);
         RodPurchased?.Invoke(product.Id);
         return true;
     }
@@ -125,19 +145,28 @@ public sealed class FishingShopSystem : MonoBehaviour
         if (!isOpen)
         {
             bool blocked = inputBlocked != null && inputBlocked();
-            if (isPlayerInRange && !blocked) DrawInteractionPrompt();
+            if (promptVisibility > 0f && !blocked) DrawInteractionPrompt();
             GUI.matrix = previousMatrix;
             return;
         }
 
+        Color previousColor = GUI.color;
+        bool previousEnabled = GUI.enabled;
+        GUI.color = new Color(1f, 1f, 1f, Mathf.SmoothStep(0f, 1f, windowReveal));
+        GUI.enabled = previousEnabled && !windowClosing && windowReveal >= .85f;
         DrawShopWindow();
+        GUI.enabled = previousEnabled;
+        GUI.color = previousColor;
         GUI.matrix = previousMatrix;
     }
 
     private void DrawInteractionPrompt()
     {
+        Color old = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, promptVisibility);
         var prompt = new Rect(logicalScreenWidth * .5f - 158f, logicalScreenHeight - 104f, 316f, 56f);
         FishingUiTheme.DrawInteractionPrompt(prompt, "F", "낚시 상점 열기");
+        GUI.color = old;
     }
 
     private void DrawShopWindow()

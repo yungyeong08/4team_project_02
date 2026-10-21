@@ -18,6 +18,10 @@ public sealed class FishMarketSystem : MonoBehaviour
     private string statusMessage = "판매할 물고기를 선택해 주세요.";
     private float logicalScreenWidth;
     private float logicalScreenHeight;
+    private FishingAudioDirector audioDirector;
+    private float promptVisibility;
+    private float windowReveal;
+    private bool windowClosing;
 
     public bool IsOpen => isOpen;
     public bool IsPlayerInRange => isPlayerInRange;
@@ -38,14 +42,27 @@ public sealed class FishMarketSystem : MonoBehaviour
     }
 
     public void SetInputBlocker(System.Func<bool> blocker) => inputBlocked = blocker;
+    public void SetAudio(FishingAudioDirector audio) => audioDirector = audio;
 
     private void Update()
     {
         RefreshRange();
+        if (isOpen)
+        {
+            windowReveal = Mathf.MoveTowards(windowReveal, windowClosing ? 0f : 1f, Time.unscaledDeltaTime * 6f);
+            if (windowClosing && windowReveal <= 0f)
+            {
+                isOpen = false;
+                windowClosing = false;
+                statusMessage = "판매할 물고기를 선택해 주세요.";
+            }
+        }
+        promptVisibility = Mathf.MoveTowards(promptVisibility, isPlayerInRange && !isOpen ? 1f : 0f,
+            Time.unscaledDeltaTime * 6f);
         if (!isOpen && inputBlocked != null && inputBlocked()) return;
         if (isOpen)
         {
-            if (Input.GetKeyDown(KeyCode.Escape)) CloseShop();
+            if (!windowClosing && Input.GetKeyDown(KeyCode.Escape)) CloseShop();
             return;
         }
 
@@ -62,6 +79,8 @@ public sealed class FishMarketSystem : MonoBehaviour
     {
         if (isOpen || !isPlayerInRange) return false;
         isOpen = true;
+        windowClosing = false;
+        windowReveal = 0f;
         statusMessage = inventory != null && inventory.TotalCount > 0
             ? "판매할 물고기를 선택해 주세요."
             : "판매할 물고기가 없습니다.";
@@ -70,8 +89,8 @@ public sealed class FishMarketSystem : MonoBehaviour
 
     public void CloseShop()
     {
-        isOpen = false;
-        statusMessage = "판매할 물고기를 선택해 주세요.";
+        if (!isOpen || windowClosing) return;
+        windowClosing = true;
     }
 
     public bool SellFish(string fishId)
@@ -93,6 +112,7 @@ public sealed class FishMarketSystem : MonoBehaviour
 
         int earned = SafeSaleValue(soldCount, fish.SalePrice);
         wallet.AddMoney(earned);
+        audioDirector?.PlaySell(false);
         statusMessage = $"{fish.DisplayName} {soldCount}마리 판매 완료!  +{earned:N0} G";
         FishSold?.Invoke(soldCount, earned);
         return true;
@@ -123,6 +143,7 @@ public sealed class FishMarketSystem : MonoBehaviour
         }
 
         wallet.AddMoney(earned);
+        audioDirector?.PlaySell(true);
         statusMessage = $"모든 물고기 판매 완료!  +{earned:N0} G";
         FishSold?.Invoke(totalSold, earned);
         return earned;
@@ -154,19 +175,28 @@ public sealed class FishMarketSystem : MonoBehaviour
         if (!isOpen)
         {
             bool blocked = inputBlocked != null && inputBlocked();
-            if (isPlayerInRange && !blocked) DrawInteractionPrompt();
+            if (promptVisibility > 0f && !blocked) DrawInteractionPrompt();
             GUI.matrix = previousMatrix;
             return;
         }
 
+        Color previousColor = GUI.color;
+        bool previousEnabled = GUI.enabled;
+        GUI.color = new Color(1f, 1f, 1f, Mathf.SmoothStep(0f, 1f, windowReveal));
+        GUI.enabled = previousEnabled && !windowClosing && windowReveal >= .85f;
         DrawMarketWindow();
+        GUI.enabled = previousEnabled;
+        GUI.color = previousColor;
         GUI.matrix = previousMatrix;
     }
 
     private void DrawInteractionPrompt()
     {
+        Color old = GUI.color;
+        GUI.color = new Color(1f, 1f, 1f, promptVisibility);
         var prompt = new Rect(logicalScreenWidth * .5f - 158f, logicalScreenHeight - 104f, 316f, 56f);
         FishingUiTheme.DrawInteractionPrompt(prompt, "F", "물고기 판매");
+        GUI.color = old;
     }
 
     private void DrawMarketWindow()
