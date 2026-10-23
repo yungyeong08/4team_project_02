@@ -89,12 +89,14 @@ public sealed class FishingShopSystem : MonoBehaviour
         windowClosing = false;
         windowReveal = 0f;
         statusMessage = "상품을 선택해 주세요.";
+        audioDirector?.PlayMenuOpen();
         return true;
     }
 
     public void CloseShop()
     {
         if (!isOpen || windowClosing) return;
+        audioDirector?.PlayMenuClose();
         windowClosing = true;
     }
 
@@ -127,7 +129,7 @@ public sealed class FishingShopSystem : MonoBehaviour
         }
 
         statusMessage = product.DisplayName + " 구매 완료! 자동으로 장착했습니다.";
-        audioDirector?.PlaySell(false);
+        audioDirector?.PlayPurchase();
         RodPurchased?.Invoke(product.Id);
         return true;
     }

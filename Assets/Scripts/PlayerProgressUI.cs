@@ -18,6 +18,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private FishingShopSystem shop;
     private FishMarketSystem market;
     private EarlyGameQuestSystem earlyGameProgress;
+    private PlayerDebt playerDebt;
     private WindowMode windowMode;
     private InventoryTab inventoryTab;
     private Vector2 scrollPosition;
@@ -44,7 +45,8 @@ public sealed class PlayerProgressUI : MonoBehaviour
         FishingGameController controller,
         FishingShopSystem shopSystem,
         FishMarketSystem marketSystem,
-        EarlyGameQuestSystem questSystem)
+        EarlyGameQuestSystem questSystem,
+        PlayerDebt debt)
     {
         wallet = playerWallet;
         fishInventory = playerFishInventory;
@@ -56,6 +58,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         shop = shopSystem;
         market = marketSystem;
         earlyGameProgress = questSystem;
+        playerDebt = debt;
         lastBalance = wallet != null ? wallet.Balance : 0;
         if (wallet != null) wallet.BalanceChanged += OnBalanceChanged;
     }
@@ -109,7 +112,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void OpenWindow(WindowMode mode)
     {
-        audioDirector?.PlayUiClick();
+        audioDirector?.PlayMenuOpen();
         windowMode = mode;
         modalClosing = false;
         modalReveal = 0f;
@@ -122,7 +125,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private void CloseWindow()
     {
         if (windowMode == WindowMode.None || modalClosing) return;
-        audioDirector?.PlayUiClick();
+        audioDirector?.PlayMenuClose();
         modalClosing = true;
     }
 
@@ -229,8 +232,18 @@ public sealed class PlayerProgressUI : MonoBehaviour
     {
         Rect panel = BeginLargePanel(screenWidth, screenHeight, "인벤토리");
         FishingUiTheme.DrawMoneyChip(new Rect(panel.x + 24f, panel.y + 58f, 190f, 40f), wallet != null ? wallet.Balance : 0);
-        if (GUI.Button(new Rect(panel.x + 24f, panel.y + 106f, 170f, 40f), "물고기 가방", inventoryTab == InventoryTab.Fish ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab)) { inventoryTab = InventoryTab.Fish; scrollPosition = Vector2.zero; }
-        if (GUI.Button(new Rect(panel.x + 202f, panel.y + 106f, 170f, 40f), "낚싯대 장비", inventoryTab == InventoryTab.Rods ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab)) { inventoryTab = InventoryTab.Rods; scrollPosition = Vector2.zero; }
+        if (GUI.Button(new Rect(panel.x + 24f, panel.y + 106f, 170f, 40f), "물고기 가방", inventoryTab == InventoryTab.Fish ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab))
+        {
+            audioDirector?.PlayUiClick();
+            inventoryTab = InventoryTab.Fish;
+            scrollPosition = Vector2.zero;
+        }
+        if (GUI.Button(new Rect(panel.x + 202f, panel.y + 106f, 170f, 40f), "낚싯대 장비", inventoryTab == InventoryTab.Rods ? FishingUiTheme.ActiveTab : FishingUiTheme.Tab))
+        {
+            audioDirector?.PlayUiClick();
+            inventoryTab = InventoryTab.Rods;
+            scrollPosition = Vector2.zero;
+        }
 
         var view = new Rect(panel.x + 22f, panel.y + 156f, panel.width - 44f, panel.height - 212f);
         int rowCount = inventoryTab == InventoryTab.Fish ? GetOwnedFishTypeCount() : rodInventory?.OwnedRodCount ?? 0;
@@ -349,6 +362,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
             if (FishingUiTheme.StyledButton(new Rect(row.xMax - 135f, row.y + 37f, 115f, 42f), equipped ? "장착 중" : "장착", primary: !equipped, enabled: !equipped))
             {
+                audioDirector?.PlayUiClick();
                 rodInventory.TryEquip(rod.Id);
                 statusMessage = rod.DisplayName + " 장착 완료";
             }
@@ -398,17 +412,51 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void DrawPause(float screenWidth, float screenHeight)
     {
-        Rect panel = CenterPanel(screenWidth, screenHeight, 470f, 590f, "일시정지");
+        Rect panel = CenterPanel(screenWidth, screenHeight, 500f, 730f, "일시정지");
         float x = panel.x + 75f;
-        float y = panel.y + 92f;
+        float y = panel.y + 82f;
         float width = panel.width - 150f;
-        if (FishingUiTheme.StyledButton(new Rect(x, y, width, 52f), "게임 계속하기", primary: true)) CloseWindow();
-        if (FishingUiTheme.StyledButton(new Rect(x, y + 66f, width, 52f), "저장")) statusMessage = saveSystem != null && saveSystem.Save() ? "게임을 저장했습니다." : "저장하지 못했습니다.";
-        if (FishingUiTheme.StyledButton(new Rect(x, y + 132f, width, 52f), "메인 메뉴")) OpenWindow(WindowMode.MainMenu);
-        if (FishingUiTheme.StyledButton(new Rect(x, y + 198f, width, 52f), "게임 초기화", danger: true)) OpenWindow(WindowMode.ResetConfirm);
-        if (FishingUiTheme.StyledButton(new Rect(x, y + 264f, width, 52f), "게임 종료", danger: true)) QuitGame();
+        var debtCard = new Rect(panel.x + 45f, y, panel.width - 90f, 118f);
+        FishingUiTheme.DrawCard(debtCard, true);
+        GUI.Label(new Rect(debtCard.x + 18f, debtCard.y + 10f, 120f, 28f), "남은 빚", FishingUiTheme.Small);
+        FishingUiTheme.ColoredLabel(new Rect(debtCard.x + 130f, debtCard.y + 6f, debtCard.width - 148f, 34f),
+            $"{(playerDebt != null ? playerDebt.RemainingDebt : 0):N0} G", FishingUiTheme.Heading, FishingUiTheme.Gold);
+        bool oldEnabled = GUI.enabled;
+        GUI.enabled = playerDebt != null && !playerDebt.IsFullyRepaid;
+        if (FishingUiTheme.StyledButton(new Rect(debtCard.x + 18f, debtCard.y + 53f, 174f, 46f), "100 G 상환"))
+            TryRepayDebt(100);
+        if (FishingUiTheme.StyledButton(new Rect(debtCard.xMax - 192f, debtCard.y + 53f, 174f, 46f), "500 G 상환", primary: true))
+            TryRepayDebt(500);
+        GUI.enabled = oldEnabled;
+
+        float menuY = y + 142f;
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY, width, 52f), "게임 계속하기", primary: true)) CloseWindow();
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 62f, width, 52f), "저장")) statusMessage = saveSystem != null && saveSystem.Save() ? "게임을 저장했습니다." : "저장하지 못했습니다.";
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 124f, width, 52f), "메인 메뉴")) OpenWindow(WindowMode.MainMenu);
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 186f, width, 52f), "게임 초기화", danger: true)) OpenWindow(WindowMode.ResetConfirm);
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 248f, width, 52f), "게임 종료", danger: true)) QuitGame();
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 92f, panel.width - 60f, 54f), statusMessage, FishingUiTheme.BodyCentered);
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 42f, panel.width - 60f, 24f), "ESC로 게임에 돌아가기", FishingUiTheme.SmallCentered);
+    }
+
+    private void TryRepayDebt(int amount)
+    {
+        if (playerDebt == null || wallet == null)
+        {
+            statusMessage = "빚 정보를 불러오지 못했습니다.";
+            return;
+        }
+
+        int required = Mathf.Min(amount, playerDebt.RemainingDebt);
+        int paid = playerDebt.TryRepay(wallet, amount);
+        if (paid > 0)
+        {
+            audioDirector?.PlayDebtRepay();
+            statusMessage = playerDebt.IsFullyRepaid
+                ? $"{paid:N0} G를 상환해 빚을 모두 갚았습니다."
+                : $"빚 {paid:N0} G를 상환했습니다.";
+        }
+        else statusMessage = required > wallet.Balance ? "상환할 돈이 부족합니다." : "더 이상 갚을 빚이 없습니다.";
     }
 
     private void DrawMainMenu(float screenWidth, float screenHeight)

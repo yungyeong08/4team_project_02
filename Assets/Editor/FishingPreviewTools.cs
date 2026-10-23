@@ -8,7 +8,7 @@ public static class FishingPreviewTools
 {
     private const string FishingScenePath = "Assets/Scenes/FishingDemo.unity";
     private const string SmokeTestSessionKey = "Fishing.PlayModeSmokeTest";
-    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.EarlyGameV3";
+    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.EarlyGameV4";
 
     private const string MapConfigPath = "Assets/Resources/Data/FishingMapConfig.asset";
     private const string BalanceConfigPath = "Assets/Resources/Data/FishingBalanceConfig.asset";
@@ -66,17 +66,19 @@ public static class FishingPreviewTools
         EarlyGameQuestConfig questConfig = EnsureQuestConfig();
         if (balance.Fish == null || balance.Fish.Count == 0) throw new System.InvalidOperationException("Fish catalog is empty.");
         if (balance.Rods == null || balance.Rods.Count < 2) throw new System.InvalidOperationException("Rod catalog needs a default rod and purchasable upgrades.");
-        if (questConfig.Quests == null || questConfig.Quests.Count != 5)
-            throw new System.InvalidOperationException("The first-area quest line must contain five quests.");
+        if (questConfig.Quests == null || questConfig.Quests.Count != 6)
+            throw new System.InvalidOperationException("The first-area quest line must contain six quests.");
         EarlyQuestDefinition firstCatchQuest = questConfig.Quests.Find(quest => quest.Id == "first_catch");
         EarlyQuestDefinition firstSaleQuest = questConfig.Quests.Find(quest => quest.Id == "first_sale");
         EarlyQuestDefinition rodUpgradeQuest = questConfig.Quests.Find(quest => quest.Id == "rod_upgrade");
         EarlyQuestDefinition useNewRodQuest = questConfig.Quests.Find(quest => quest.Id == "use_new_rod");
         EarlyQuestDefinition beginnerQuest = questConfig.Quests.Find(quest => quest.Id == "beginner_angler");
+        EarlyQuestDefinition debtQuest = questConfig.Quests.Find(quest => quest.Id == "repay_debt");
         if (firstCatchQuest?.NextQuestId != "first_sale" || firstSaleQuest?.NextQuestId != "rod_upgrade" ||
             rodUpgradeQuest?.NextQuestId != "use_new_rod" || useNewRodQuest?.NextQuestId != "beginner_angler" ||
-            beginnerQuest == null || !string.IsNullOrEmpty(beginnerQuest.NextQuestId))
-            throw new System.InvalidOperationException("The opening quest chain must follow catch -> sale -> rod -> use rod -> free play.");
+            beginnerQuest?.NextQuestId != "repay_debt" || debtQuest?.Goal != EarlyQuestGoal.RepayDebt ||
+            debtQuest.TargetAmount != 500 || !string.IsNullOrEmpty(debtQuest.NextQuestId))
+            throw new System.InvalidOperationException("The opening quest chain must end with a 500G debt repayment objective.");
 
         var fishIds = new System.Collections.Generic.HashSet<string>();
         var rarities = new System.Collections.Generic.HashSet<FishRarity>();
@@ -123,6 +125,8 @@ public static class FishingPreviewTools
             },
             PlayerX = 3.5f,
             PlayerY = -2f,
+            DebtRemaining = 4200,
+            LifetimeDebtRepaid = 800,
             EarlyGameProgress = new EarlyGameProgressSaveData
             {
                 TutorialStep = (int)EarlyTutorialStep.ReachFishMarket,
@@ -135,7 +139,8 @@ public static class FishingPreviewTools
         FishingGameSaveData restored = JsonUtility.FromJson<FishingGameSaveData>(JsonUtility.ToJson(saveRoundTrip));
         if (restored == null || restored.Money != 777 || restored.FishProgress.Count != 1 || restored.FishProgress[0].LifetimeCaught != 5 ||
             restored.EarlyGameProgress == null || restored.EarlyGameProgress.ActiveQuestId != "first_sale" ||
-            !restored.EarlyGameProgress.OpeningSeen || restored.Version != FishingGameSaveData.CurrentVersion)
+            !restored.EarlyGameProgress.OpeningSeen || restored.DebtRemaining != 4200 ||
+            restored.LifetimeDebtRepaid != 800 || restored.Version != FishingGameSaveData.CurrentVersion)
             throw new System.InvalidOperationException("Save data JSON round trip failed.");
 
         var validationObject = new GameObject("Progression Validation (Temporary)");
@@ -150,30 +155,41 @@ public static class FishingPreviewTools
 
             FishInventory inventory = validationObject.AddComponent<FishInventory>();
             string fishId = balance.Fish[0].Id;
-            inventory.Add(fishId, 3);
-            if (inventory.GetCount(fishId) != 3 || inventory.GetLifetimeCaught(fishId) != 3 || !inventory.IsDiscovered(fishId))
+            if (!inventory.Add(fishId, 3) || inventory.Add(fishId))
+                throw new System.InvalidOperationException("New fish discovery must be true only for the first acquisition.");
+            if (inventory.GetCount(fishId) != 4 || inventory.GetLifetimeCaught(fishId) != 4 || !inventory.IsDiscovered(fishId))
                 throw new System.InvalidOperationException("Fish inventory and codex progress are not sharing data.");
-            if (inventory.RemoveAll(fishId) != 3 || inventory.GetCount(fishId) != 0 || inventory.GetLifetimeCaught(fishId) != 3)
+            if (inventory.RemoveAll(fishId) != 4 || inventory.GetCount(fishId) != 0 || inventory.GetLifetimeCaught(fishId) != 4)
                 throw new System.InvalidOperationException("Selling must remove owned fish without erasing codex history.");
 
             PlayerWallet wallet = validationObject.AddComponent<PlayerWallet>();
-            wallet.Initialize(0);
+            wallet.Initialize(2000);
+            PlayerDebt debt = validationObject.AddComponent<PlayerDebt>();
+            debt.InitializeNewGame(5000);
             EarlyGameQuestSystem quests = validationObject.AddComponent<EarlyGameQuestSystem>();
-            quests.Setup(validationObject.transform, wallet, FishingMapConfig.CreateDefaultSpots()[0], null, null);
+            quests.Setup(validationObject.transform, wallet, FishingMapConfig.CreateDefaultSpots()[0], null, null, debt);
+            debt.DebtRepaid += quests.NotifyDebtRepaid;
             quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, FishingRodCatalog.DefaultRodId);
-            for (int i = 0; i < 3; i++) quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, FishingRodCatalog.DefaultRodId);
             quests.NotifyFishSold(1);
             quests.NotifyRodPurchased(EarlyGameQuestSystem.UpgradeRodId);
             for (int i = 0; i < 2; i++) quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, EarlyGameQuestSystem.UpgradeRodId);
-            if (!quests.NextRegionReady || quests.ActiveQuest != null || quests.CompletedQuestIds.Count != 5 || wallet.Balance != 950)
-                throw new System.InvalidOperationException("First-area quest chain, rewards, or next-region-ready state failed.");
+            for (int i = 0; i < 3; i++) quests.NotifyFishCaught(EarlyGameQuestSystem.FirstLakeId, FishingRodCatalog.DefaultRodId);
+            if (quests.ActiveQuest?.Goal != EarlyQuestGoal.RepayDebt)
+                throw new System.InvalidOperationException("Debt objective did not activate after the fishing quests.");
+            if (debt.TryRepay(wallet, 100) != 100 || quests.QuestProgress != 100 ||
+                debt.TryRepay(wallet, 200) != 200 || quests.QuestProgress != 300 ||
+                debt.TryRepay(wallet, 200) != 200)
+                throw new System.InvalidOperationException("Debt repayment event progress did not accumulate 100 + 200 + 200.");
+            if (!quests.NextRegionReady || quests.ActiveQuest != null || quests.CompletedQuestIds.Count != 6 ||
+                debt.RemainingDebt != 4500 || debt.LifetimeRepaid != 500 || wallet.Balance != 2450)
+                throw new System.InvalidOperationException("Debt quest completion, rewards, or debt balance failed.");
         }
         finally
         {
             Object.DestroyImmediate(validationObject);
         }
 
-        Debug.Log("PROGRESSION_VALIDATION_OK: inventory/codex, rod progression, five-quest early-game chain, rewards, and save-data JSON verified.");
+        Debug.Log("PROGRESSION_VALIDATION_OK: new-fish discovery, rod progression, six-quest chain, debt events, rewards, and save-data JSON verified.");
     }
 
     public static void RunPlayModeSmokeTest()
@@ -217,8 +233,9 @@ public static class FishingPreviewTools
             PlayerProgressUI progressUi = Object.FindFirstObjectByType<PlayerProgressUI>();
             GameSaveSystem saveSystem = Object.FindFirstObjectByType<GameSaveSystem>();
             EarlyGameQuestSystem earlyGameQuests = Object.FindFirstObjectByType<EarlyGameQuestSystem>();
+            PlayerDebt playerDebt = Object.FindFirstObjectByType<PlayerDebt>();
             if (controller == null || shop == null || market == null || fishInventory == null || rodInventory == null ||
-                progressUi == null || saveSystem == null || earlyGameQuests == null)
+                progressUi == null || saveSystem == null || earlyGameQuests == null || playerDebt == null)
                 throw new System.InvalidOperationException("One or more progression systems were not created at runtime.");
             if (!rodInventory.Owns(FishingRodCatalog.DefaultRodId) || string.IsNullOrWhiteSpace(rodInventory.EquippedRodId) ||
                 !rodInventory.Owns(rodInventory.EquippedRodId))

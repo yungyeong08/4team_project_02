@@ -89,6 +89,9 @@ public static class FishingUiTheme
     private static Texture2D keyTexture;
     private static Texture2D dimTexture;
     private static Texture2D trackTexture;
+    private static Texture2D inventoryIconTexture;
+    private static Texture2D codexIconTexture;
+    private static Texture2D homeIconTexture;
     private static bool initialized;
 
     public static void Configure(FishingHudSettings settings)
@@ -127,6 +130,9 @@ public static class FishingUiTheme
 
         dimTexture = MakeTexture(new Color(.01f, .018f, .023f, .82f));
         trackTexture = MakeTexture(new Color(.025f, .09f, .12f, 1f));
+        inventoryIconTexture ??= Resources.Load<Texture2D>("UI/Hud/InventoryChest");
+        codexIconTexture ??= Resources.Load<Texture2D>("UI/Hud/FishCodex");
+        homeIconTexture ??= Resources.Load<Texture2D>("UI/Hud/HomeMenu");
 
         panelStyle = FramedStyle(panelTexture, 4);
         panelLightStyle = FramedStyle(panelLightTexture, 4);
@@ -244,7 +250,7 @@ public static class FishingUiTheme
     {
         Ensure();
         bool clicked = GUI.Button(rect, GUIContent.none, Button);
-        Rect iconRect = new(rect.x + 12f, rect.y + 13f, 28f, 28f);
+        Rect iconRect = new(rect.x + 9f, rect.y + 10f, 34f, 34f);
         DrawHudIcon(iconRect, icon, AccentBright);
         float keyWidth = key != null && key.Length > 1 ? 42f : 32f;
         GUI.Label(new Rect(rect.x + 47f, rect.y + 5f, rect.width - keyWidth - 62f, rect.height - 10f), label, BodyCentered);
@@ -255,6 +261,19 @@ public static class FishingUiTheme
     public static void DrawHudIcon(Rect rect, HudIcon icon, Color color)
     {
         Ensure();
+        Texture2D artIcon = icon switch
+        {
+            HudIcon.Bag => inventoryIconTexture,
+            HudIcon.Book => codexIconTexture,
+            HudIcon.Menu => homeIconTexture,
+            _ => null
+        };
+        if (artIcon != null)
+        {
+            GUI.DrawTexture(rect, artIcon, ScaleMode.ScaleToFit, true);
+            return;
+        }
+
         float t = 3f;
         if (icon == HudIcon.Bag)
         {

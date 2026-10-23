@@ -21,7 +21,8 @@ public enum EarlyQuestGoal
     CatchAtFirstLake,
     SellFish,
     PurchaseRod,
-    CatchWithUpgradedRod
+    CatchWithUpgradedRod,
+    RepayDebt
 }
 
 [Serializable]
@@ -84,6 +85,7 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
     private Transform fishMarket;
     private Transform rodShop;
     private PlayerWallet wallet;
+    private PlayerDebt playerDebt;
     private FishingSpotDefinition firstLake;
     private Vector2 movementStart;
     private EarlyTutorialStep tutorialStep;
@@ -113,10 +115,11 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
     public IReadOnlyList<string> CompletedQuestIds => completedQuestIds;
 
     public void Setup(Transform playerTransform, PlayerWallet playerWallet, FishingSpotDefinition beginnerLake,
-        Transform marketTarget, Transform shopTarget)
+        Transform marketTarget, Transform shopTarget, PlayerDebt debt = null)
     {
         player = playerTransform;
         wallet = playerWallet;
+        playerDebt = debt;
         firstLake = beginnerLake;
         fishMarket = marketTarget;
         rodShop = shopTarget;
@@ -204,6 +207,12 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
             AddQuestProgress(1);
     }
 
+    public void NotifyDebtRepaid(int amount)
+    {
+        if (amount <= 0 || ActiveQuest?.Goal != EarlyQuestGoal.RepayDebt) return;
+        AddQuestProgress(amount);
+    }
+
     private void AddQuestProgress(int amount)
     {
         EarlyQuestDefinition quest = ActiveQuest;
@@ -226,6 +235,15 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
             : quests.FindIndex(candidate => candidate.Id == completed.NextQuestId);
         activeQuestIndex = nextIndex;
         questProgress = 0;
+        if (ActiveQuest?.Goal == EarlyQuestGoal.RepayDebt && playerDebt != null)
+        {
+            questProgress = Mathf.Clamp(playerDebt.LifetimeRepaid, 0, ActiveQuest.TargetAmount);
+            if (questProgress >= ActiveQuest.TargetAmount)
+            {
+                CompleteActiveQuest();
+                return;
+            }
+        }
         if (activeQuestIndex < 0)
         {
             nextRegionReady = true;
@@ -367,8 +385,10 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
             ? -1
             : quests.FindIndex(candidate => candidate.Id == saved.ActiveQuestId);
         questProgress = ActiveQuest != null ? Mathf.Clamp(saved.QuestProgress, 0, ActiveQuest.TargetAmount) : 0;
+        if (ActiveQuest?.Goal == EarlyQuestGoal.RepayDebt && playerDebt != null)
+            questProgress = Mathf.Clamp(Mathf.Max(questProgress, playerDebt.LifetimeRepaid), 0, ActiveQuest.TargetAmount);
         nextRegionReady = saved.NextRegionReady ||
-            (activeQuestIndex < 0 && completedQuestIds.Contains("use_new_rod"));
+            (activeQuestIndex < 0 && completedQuestIds.Contains("repay_debt"));
         openingSeen = saved.OpeningSeen || tutorialStep > EarlyTutorialStep.Move || completedQuestIds.Count > 0;
         movementStart = player != null ? (Vector2)player.position : Vector2.zero;
         ClearCenterNotices();
@@ -439,9 +459,10 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
         {
             GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 27f, questPanel.width - 32f, 26f), ActiveQuest.Title, FishingUiTheme.Heading);
             GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 52f, questPanel.width - 32f, 24f), ActiveQuest.Description, FishingUiTheme.Small);
+            string progressUnit = ActiveQuest.Goal == EarlyQuestGoal.RepayDebt ? " G" : "";
             FishingUiTheme.DrawBar(new Rect(questPanel.x + 16f, questPanel.yMax - 34f, questPanel.width - 32f, 24f),
                 (float)questProgress / ActiveQuest.TargetAmount, FishingUiTheme.AccentBright,
-                $"진행 {questProgress} / {ActiveQuest.TargetAmount}   ·   보상 {ActiveQuest.RewardGold:N0} G");
+                $"진행 {questProgress:N0} / {ActiveQuest.TargetAmount:N0}{progressUnit}   ·   보상 {ActiveQuest.RewardGold:N0} G");
         }
         else
         {

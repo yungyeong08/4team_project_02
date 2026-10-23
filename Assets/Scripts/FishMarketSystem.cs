@@ -84,12 +84,14 @@ public sealed class FishMarketSystem : MonoBehaviour
         statusMessage = inventory != null && inventory.TotalCount > 0
             ? "판매할 물고기를 선택해 주세요."
             : "판매할 물고기가 없습니다.";
+        audioDirector?.PlayMenuOpen();
         return true;
     }
 
     public void CloseShop()
     {
         if (!isOpen || windowClosing) return;
+        audioDirector?.PlayMenuClose();
         windowClosing = true;
     }
 

@@ -10,6 +10,7 @@ public sealed class FishingGameController : MonoBehaviour
     [Header("Opening / temporary audio")]
     [SerializeField] private FishingOpeningSettings openingSettings = new();
     [SerializeField] private FishingAudioSettings audioSettings = new();
+    [SerializeField] private DebtSettings debtSettings = new();
 
     private enum State { Explore, Waiting, Reeling }
     private State state;
@@ -48,12 +49,14 @@ public sealed class FishingGameController : MonoBehaviour
     private EarlyGameQuestSystem earlyGameProgress;
     private FishingAudioDirector audioDirector;
     private FishingOpeningSequence openingSequence;
+    private PlayerDebt playerDebt;
     private Coroutine castSequence;
     private float reelUiReveal;
     private float resultUiReveal;
     private bool firstCatchResult;
+    private bool newFishResult;
+    private float newFishUiReveal;
     private float actionPromptVisibility;
-    private float reelSoundTimer;
     private string lastRegionId = "";
     private string regionTitle = "";
     private string regionSubtitle = "";
@@ -120,12 +123,14 @@ public sealed class FishingGameController : MonoBehaviour
         character.Setup();
         var wallet = player.AddComponent<PlayerWallet>();
         wallet.Initialize(100);
+        playerDebt = player.AddComponent<PlayerDebt>();
+        playerDebt.InitializeNewGame(debtSettings.InitialDebt);
         rodInventory = player.AddComponent<FishingRodInventory>();
         rodInventory.EnsureDefaultRod();
         fishInventory = player.AddComponent<FishInventory>();
 
         audioDirector = gameObject.AddComponent<FishingAudioDirector>();
-        audioDirector.Setup(character, audioSettings);
+        audioDirector.Setup(character, FishingAudioConfig.LoadOrFallback(audioSettings));
 
         shopSystem = gameObject.AddComponent<FishingShopSystem>();
         shopSystem.Setup(character, map.FishingShop, wallet, rodInventory, rodCatalog);
@@ -136,18 +141,19 @@ public sealed class FishingGameController : MonoBehaviour
 
         earlyGameProgress = gameObject.AddComponent<EarlyGameQuestSystem>();
         earlyGameProgress.Setup(player.transform, wallet, map.GetFishingSpot(EarlyGameQuestSystem.FirstLakeId),
-            map.FishMarket, map.FishingShop);
+            map.FishMarket, map.FishingShop, playerDebt);
+        playerDebt.DebtRepaid += earlyGameProgress.NotifyDebtRepaid;
         earlyGameProgress.QuestCompleted += (_, _) => audioDirector?.PlayQuestCompleteDelayed();
         shopSystem.RodPurchased += earlyGameProgress.NotifyRodPurchased;
         fishMarketSystem.FishSold += (soldCount, _) => earlyGameProgress.NotifyFishSold(soldCount);
 
         saveSystem = gameObject.AddComponent<GameSaveSystem>();
         saveSystem.Setup(wallet, fishInventory, rodInventory, player.transform, map.PlayerStart, map.MapSize,
-            fishCatalog, rodCatalog, earlyGameProgress);
+            fishCatalog, rodCatalog, earlyGameProgress, playerDebt, debtSettings.InitialDebt);
 
         progressUI = gameObject.AddComponent<PlayerProgressUI>();
         progressUI.Setup(wallet, fishInventory, rodInventory, fishCatalog, rodCatalog, saveSystem, this,
-            shopSystem, fishMarketSystem, earlyGameProgress);
+            shopSystem, fishMarketSystem, earlyGameProgress, playerDebt);
         progressUI.SetAudio(audioDirector);
         earlyGameProgress.SetUiBlocker(() =>
             IsCinematicActive ||
@@ -200,11 +206,14 @@ public sealed class FishingGameController : MonoBehaviour
         {
             resultTimer -= Time.deltaTime;
             resultUiReveal = Mathf.MoveTowards(resultUiReveal, 1f, Time.unscaledDeltaTime * 6f);
+            if (newFishResult)
+                newFishUiReveal = Mathf.MoveTowards(newFishUiReveal, 1f, Time.unscaledDeltaTime / .2f);
             if (resultTimer <= 0f)
             {
                 resultTimer = 0f;
                 resultFish = null;
                 resultDetails = "";
+                newFishResult = false;
             }
         }
 
@@ -255,6 +264,8 @@ public sealed class FishingGameController : MonoBehaviour
         resultFish = null;
         resultDetails = "";
         resultTimer = 0f;
+        newFishResult = false;
+        newFishUiReveal = 0f;
         locationTitle = spot.DisplayName;
         actionHint = "입질을 기다리는 중…  ·  ESC 취소";
         actionAvailable = false;
@@ -321,12 +332,6 @@ public sealed class FishingGameController : MonoBehaviour
     {
         reelUiReveal = Mathf.MoveTowards(reelUiReveal, 1f, Time.deltaTime * 6f);
         float input = (Input.GetMouseButton(0) || Input.GetKey(KeyCode.Space)) ? 1f : -1f;
-        reelSoundTimer -= Time.deltaTime;
-        if (input > 0f && reelSoundTimer <= 0f)
-        {
-            audioDirector?.PlayReel();
-            reelSoundTimer = .24f;
-        }
         float zoneSize = AdjustedReelZoneSize;
         float rodFishSpeedMultiplier = EquippedRod != null ? EquippedRod.FishSpeedMultiplier : 1f;
 
@@ -368,6 +373,7 @@ public sealed class FishingGameController : MonoBehaviour
         resultFish = caughtFish ? currentFish : null;
         resultSuccess = caughtFish;
         firstCatchResult = caughtFish && fishInventory != null && fishInventory.TotalLifetimeCaught == 0;
+        newFishResult = false;
         resultDetails = caughtFish && currentFish != null
             ? $"{currentFish.DisplayName} · {currentFish.RarityName} · 판매가 {currentFish.SalePrice:N0} G"
             : escapedFish ? "물고기를 놓쳤습니다. 다시 도전해 보세요." : "";
@@ -375,14 +381,15 @@ public sealed class FishingGameController : MonoBehaviour
         {
             string caughtSpotId = activeFishingSpot != null ? activeFishingSpot.Id : "";
             string usedRodId = rodInventory != null ? rodInventory.EquippedRodId : "";
-            fishInventory.Add(currentFish.Id);
+            newFishResult = fishInventory.Add(currentFish.Id);
             earlyGameProgress?.NotifyFishCaught(caughtSpotId, usedRodId);
-            audioDirector?.PlayCatchSequence();
+            audioDirector?.PlayCatchSequence(newFishResult);
             if (activeFishingSpot != null) FishingWorldFx.SpawnCatchSplash(activeFishingSpot.BobberPosition);
         }
         resultTimer = caughtFish || escapedFish ? 5.5f : 0f;
-        resultDelayTimer = caughtFish || escapedFish ? .16f : 0f;
+        resultDelayTimer = caughtFish || escapedFish ? .34f : 0f;
         resultUiReveal = 0f;
+        newFishUiReveal = 0f;
         state = State.Explore;
         locationTitle = resultSuccess ? "낚시 성공" : escapedFish ? "낚시 실패" : "낚시 취소";
         actionHint = newMessage;
@@ -391,7 +398,6 @@ public sealed class FishingGameController : MonoBehaviour
         reelVelocity = 0f;
         fishVelocity = 0f;
         directionTimer = 0f;
-        reelSoundTimer = 0f;
         progress = 0f;
         escape = 0f;
         if (bobber != null) Destroy(bobber);
@@ -542,7 +548,7 @@ public sealed class FishingGameController : MonoBehaviour
     private void DrawResultWindow(float screenWidth, float screenHeight)
     {
         float width = Mathf.Min(620f, screenWidth - 40f);
-        float height = 310f;
+        float height = newFishResult ? 350f : 310f;
         float reveal = Mathf.Clamp01(resultUiReveal);
         width *= Mathf.Lerp(.94f, 1f, reveal);
         height *= Mathf.Lerp(.94f, 1f, reveal);
@@ -553,12 +559,21 @@ public sealed class FishingGameController : MonoBehaviour
         Color resultColor = resultSuccess ? FishingUiTheme.AccentBright : FishingUiTheme.Danger;
         FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 70f, panel.y - 16f, panel.width - 140f, 58f),
             resultSuccess ? (firstCatchResult ? "첫 물고기를 낚았다!" : "낚았다!") : "놓쳤다!", resultColor);
+        float contentOffset = newFishResult ? 38f : 0f;
+        if (resultSuccess && newFishResult)
+        {
+            float badgeScale = Mathf.Lerp(.55f, 1f, Mathf.SmoothStep(0f, 1f, newFishUiReveal));
+            var badge = new Rect(panel.center.x - 78f * badgeScale, panel.y + 47f,
+                156f * badgeScale, 34f * badgeScale);
+            FishingUiTheme.DrawBadge(badge, "NEW!", FishingUiTheme.Gold);
+            DrawNewFishSparkles(badge, newFishUiReveal);
+        }
         if (resultSuccess && resultFish?.Icon != null)
         {
-            FishingUiTheme.DrawTextureOrSwatch(new Rect(panel.x + 42f, panel.y + 74f, 122f, 122f), resultFish.Icon, resultFish.RarityColor);
-            FishingUiTheme.DrawBadge(new Rect(panel.x + 42f, panel.y + 206f, 122f, 30f), resultFish.RarityName, resultFish.RarityColor);
+            FishingUiTheme.DrawTextureOrSwatch(new Rect(panel.x + 42f, panel.y + 74f + contentOffset, 122f, 122f), resultFish.Icon, resultFish.RarityColor);
+            FishingUiTheme.DrawBadge(new Rect(panel.x + 42f, panel.y + 206f + contentOffset, 122f, 30f), resultFish.RarityName, resultFish.RarityColor);
         }
-        GUI.Label(new Rect(panel.x + (resultSuccess ? 188f : 42f), panel.y + 72f,
+        GUI.Label(new Rect(panel.x + (resultSuccess ? 188f : 42f), panel.y + 72f + contentOffset,
             panel.width - (resultSuccess ? 228f : 84f), 150f), resultDetails, FishingUiTheme.BodyCentered);
         if (FishingUiTheme.StyledButton(new Rect(panel.x + panel.width * .5f - 82f, panel.yMax - 58f, 164f, 42f),
             resultSuccess ? "가방에 넣기" : "다시 도전", primary: true))
@@ -566,8 +581,26 @@ public sealed class FishingGameController : MonoBehaviour
             resultTimer = 0f;
             resultFish = null;
             resultDetails = "";
+            newFishResult = false;
         }
         GUI.color = previousColor;
+    }
+
+    private static void DrawNewFishSparkles(Rect badge, float reveal)
+    {
+        float pulse = .65f + Mathf.Sin(Time.unscaledTime * 8f) * .25f;
+        Color color = FishingUiTheme.Gold;
+        color.a = Mathf.Clamp01(reveal) * pulse;
+        DrawSparkle(new Vector2(badge.x - 18f, badge.center.y - 7f), 9f, color);
+        DrawSparkle(new Vector2(badge.xMax + 18f, badge.center.y + 6f), 7f, color);
+        DrawSparkle(new Vector2(badge.x + 18f, badge.y - 10f), 5f, color);
+        DrawSparkle(new Vector2(badge.xMax - 14f, badge.yMax + 10f), 5f, color);
+    }
+
+    private static void DrawSparkle(Vector2 center, float size, Color color)
+    {
+        FishingUiTheme.DrawFlatRect(new Rect(center.x - 1f, center.y - size, 2f, size * 2f), color);
+        FishingUiTheme.DrawFlatRect(new Rect(center.x - size, center.y - 1f, size * 2f, 2f), color);
     }
 
     private float SpotDifficulty => activeFishingSpot != null ? Mathf.Max(.5f, activeFishingSpot.DifficultyMultiplier) : 1f;
@@ -582,6 +615,12 @@ public sealed class FishingGameController : MonoBehaviour
             float rodMultiplier = EquippedRod != null ? EquippedRod.CaptureZoneMultiplier : 1f;
             return Mathf.Clamp(currentFish.ReelZoneSize * 1.25f * rodMultiplier / Mathf.Sqrt(EffectiveSpotDifficulty), .18f, .48f);
         }
+    }
+
+    private void OnDestroy()
+    {
+        if (playerDebt != null && earlyGameProgress != null)
+            playerDebt.DebtRepaid -= earlyGameProgress.NotifyDebtRepaid;
     }
 
     private void OnValidate()

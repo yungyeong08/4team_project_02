@@ -6,7 +6,7 @@ using UnityEngine;
 [Serializable]
 public sealed class FishingGameSaveData
 {
-    public const int CurrentVersion = 6;
+    public const int CurrentVersion = 7;
     public int Version = CurrentVersion;
     public int Money = 100;
     public List<FishInventory.FishProgress> FishProgress = new();
@@ -15,6 +15,8 @@ public sealed class FishingGameSaveData
     public float PlayerX;
     public float PlayerY;
     public EarlyGameProgressSaveData EarlyGameProgress = new();
+    public int DebtRemaining = 5000;
+    public int LifetimeDebtRepaid;
 }
 
 /// <summary>Persists the existing wallet and inventory components as one versioned JSON save.</summary>
@@ -27,9 +29,11 @@ public sealed class GameSaveSystem : MonoBehaviour
     private FishInventory fishInventory;
     private FishingRodInventory rodInventory;
     private EarlyGameQuestSystem earlyGameProgress;
+    private PlayerDebt playerDebt;
     private Transform player;
     private Vector2 defaultPlayerPosition;
     private Vector2 mapSize;
+    private int defaultDebtAmount;
     private HashSet<string> validFishIds = new();
     private HashSet<string> validRodIds = new();
     private bool initialized;
@@ -51,13 +55,17 @@ public sealed class GameSaveSystem : MonoBehaviour
         Vector2 worldSize,
         IReadOnlyList<FishDefinition> fishCatalog,
         IReadOnlyList<FishingRodDefinition> rodCatalog,
-        EarlyGameQuestSystem questSystem)
+        EarlyGameQuestSystem questSystem,
+        PlayerDebt debt,
+        int newGameDebtAmount)
     {
         wallet = playerWallet;
         fishInventory = playerFishInventory;
         rodInventory = playerRodInventory;
         player = playerTransform;
         earlyGameProgress = questSystem;
+        playerDebt = debt;
+        defaultDebtAmount = Mathf.Max(0, newGameDebtAmount);
         defaultPlayerPosition = newGamePosition;
         mapSize = worldSize;
         validFishIds.Clear();
@@ -77,6 +85,7 @@ public sealed class GameSaveSystem : MonoBehaviour
         fishInventory.InventoryChanged += MarkDirty;
         rodInventory.InventoryChanged += MarkDirty;
         if (earlyGameProgress != null) earlyGameProgress.ProgressChanged += MarkDirty;
+        if (playerDebt != null) playerDebt.DebtChanged += MarkDirty;
         initialized = true;
     }
 
@@ -110,7 +119,9 @@ public sealed class GameSaveSystem : MonoBehaviour
                 EquippedRodId = rodInventory.EquippedRodId,
                 PlayerX = player.position.x,
                 PlayerY = player.position.y,
-                EarlyGameProgress = earlyGameProgress != null ? earlyGameProgress.CreateSnapshot() : new EarlyGameProgressSaveData()
+                EarlyGameProgress = earlyGameProgress != null ? earlyGameProgress.CreateSnapshot() : new EarlyGameProgressSaveData(),
+                DebtRemaining = playerDebt != null ? playerDebt.RemainingDebt : defaultDebtAmount,
+                LifetimeDebtRepaid = playerDebt != null ? playerDebt.LifetimeRepaid : 0
             };
 
             string tempPath = SavePath + ".tmp";
@@ -163,8 +174,13 @@ public sealed class GameSaveSystem : MonoBehaviour
             wallet.Initialize(Mathf.Max(0, data.Money));
             fishInventory.Restore(safeFishProgress);
             rodInventory.Restore(safeRodIds, safeEquippedRod);
+            if (playerDebt != null)
+            {
+                if (data.Version >= 7) playerDebt.Restore(data.DebtRemaining, data.LifetimeDebtRepaid);
+                else playerDebt.Restore(defaultDebtAmount, 0);
+            }
 
-            bool requiresStarterPosition = data.Version < FishingGameSaveData.CurrentVersion ||
+            bool requiresStarterPosition = data.Version < 6 ||
                 data.EarlyGameProgress == null ||
                 data.EarlyGameProgress.TutorialStep <= (int)EarlyTutorialStep.ReachFirstLake;
             Vector2 savedPosition = requiresStarterPosition
@@ -207,10 +223,18 @@ public sealed class GameSaveSystem : MonoBehaviour
                     data.EarlyGameProgress.QuestProgress = 0;
                 }
             }
+            if (data.Version < 7 && data.EarlyGameProgress != null &&
+                string.IsNullOrWhiteSpace(data.EarlyGameProgress.ActiveQuestId) &&
+                (data.EarlyGameProgress.CompletedQuestIds?.Contains("beginner_angler") ?? false))
+            {
+                data.EarlyGameProgress.ActiveQuestId = "repay_debt";
+                data.EarlyGameProgress.QuestProgress = 0;
+                data.EarlyGameProgress.NextRegionReady = false;
+            }
             earlyGameProgress?.Restore(data.EarlyGameProgress);
             // Persist the migrated starter position shortly after an older save loads,
             // otherwise the same legacy position would be migrated on every launch.
-            dirty = requiresStarterPosition;
+            dirty = requiresStarterPosition || data.Version < FishingGameSaveData.CurrentVersion;
             if (dirty) dirtyAt = Time.unscaledTime;
             LastStatus = requiresStarterPosition
                 ? "기존 저장 데이터를 첫 호수 시작 위치로 옮겼습니다."
@@ -263,6 +287,7 @@ public sealed class GameSaveSystem : MonoBehaviour
         wallet.Initialize(100);
         fishInventory.Restore(null);
         rodInventory.Restore(null, FishingRodCatalog.DefaultRodId);
+        playerDebt?.InitializeNewGame(defaultDebtAmount);
         if (player != null) player.position = defaultPlayerPosition;
         earlyGameProgress?.ResetProgress();
         dirty = false;
@@ -311,5 +336,6 @@ public sealed class GameSaveSystem : MonoBehaviour
         if (fishInventory != null) fishInventory.InventoryChanged -= MarkDirty;
         if (rodInventory != null) rodInventory.InventoryChanged -= MarkDirty;
         if (earlyGameProgress != null) earlyGameProgress.ProgressChanged -= MarkDirty;
+        if (playerDebt != null) playerDebt.DebtChanged -= MarkDirty;
     }
 }

@@ -28,6 +28,7 @@ public sealed class FishInventory : MonoBehaviour
     [SerializeField] private List<FishProgress> fishProgress = new();
 
     public event Action InventoryChanged;
+    public event Action<string, int, bool> FishAcquired;
 
     public int GetCount(string fishId)
     {
@@ -47,10 +48,11 @@ public sealed class FishInventory : MonoBehaviour
         return entry != null && entry.Discovered;
     }
 
-    public void Add(string fishId, int amount = 1)
+    public bool Add(string fishId, int amount = 1)
     {
-        if (string.IsNullOrWhiteSpace(fishId) || amount <= 0) return;
+        if (string.IsNullOrWhiteSpace(fishId) || amount <= 0) return false;
         FishProgress stack = fishProgress.Find(candidate => candidate.FishId == fishId);
+        bool isNewDiscovery = stack == null || !stack.Discovered;
         if (stack == null)
         {
             stack = new FishProgress { FishId = fishId };
@@ -61,6 +63,8 @@ public sealed class FishInventory : MonoBehaviour
         stack.LifetimeCaught = (int)Math.Min(int.MaxValue, (long)stack.LifetimeCaught + amount);
         stack.Discovered = true;
         InventoryChanged?.Invoke();
+        FishAcquired?.Invoke(fishId, amount, isNewDiscovery);
+        return isNewDiscovery;
     }
 
     public int RemoveAll(string fishId)

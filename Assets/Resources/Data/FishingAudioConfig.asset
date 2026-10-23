@@ -1,0 +1,41 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6b34ce332a994e6b8c9f92f43a3868ca, type: 3}
+  m_Name: FishingAudioConfig
+  m_EditorClassIdentifier: Assembly-CSharp::FishingAudioConfig
+  Settings:
+    SoundEffectsEnabled: 0
+    FishCatchSfx: {fileID: 0}
+    NewFishSfx: {fileID: 0}
+    FootstepGrass: {fileID: 0}
+    FishingCast: {fileID: 0}
+    WaterSplash: {fileID: 0}
+    FishBite: {fileID: 0}
+    FishingReel: {fileID: 0}
+    Sell: {fileID: 0}
+    SellAll: {fileID: 0}
+    Purchase: {fileID: 0}
+    DebtRepay: {fileID: 0}
+    QuestComplete: {fileID: 0}
+    UiClick: {fileID: 0}
+    MenuOpen: {fileID: 0}
+    MenuClose: {fileID: 0}
+    FishCatchVolume: 0.5
+    NewFishVolume: 0.55
+    BiteVolume: 0.78
+    ActionVolume: 0.55
+    RewardVolume: 0.55
+    FootstepVolume: 0.2
+    UiVolume: 0.15
+    MenuVolume: 0.28
+    NewFishDelay: 0.56
+    QuestCompleteDelay: 0.72
