@@ -50,6 +50,8 @@ public sealed class FishingAudioSettings
     [Range(0f, 1f)] public float FootstepVolume = .72f;
     [Range(0f, 1f)] public float UiVolume = .50f;
     [Range(0f, 1f)] public float MenuVolume = .30f;
+    [Range(0f, 1f)] public float ReelVolume = .78f;
+    [Range(.03f, .08f)] public float ReelFadeDuration = .05f;
     [Min(0f)] public float NewFishDelay = .56f;
     [Min(0f)] public float QuestCompleteDelay = .72f;
 }
@@ -58,9 +60,11 @@ public sealed class FishingAudioSettings
 public sealed class FishingAudioDirector : MonoBehaviour
 {
     private AudioSource source;
+    private AudioSource reelSource;
     private FishingAudioSettings settings;
     private Coroutine catchSequence;
     private Coroutine questSequence;
+    private bool reelRequested;
 
     public FishingSurfaceType CurrentSurface { get; set; } = FishingSurfaceType.Grass;
 
@@ -73,14 +77,60 @@ public sealed class FishingAudioDirector : MonoBehaviour
         source.playOnAwake = false;
         source.spatialBlend = 0f;
         source.volume = 1f;
+
+        if (settings.FishingReel != null)
+        {
+            reelSource = gameObject.AddComponent<AudioSource>();
+            reelSource.playOnAwake = false;
+            reelSource.spatialBlend = 0f;
+            reelSource.clip = settings.FishingReel;
+            reelSource.loop = true;
+            reelSource.pitch = 1f;
+            reelSource.volume = 0f;
+        }
     }
 
-    // Footstep and reel clips stay in the config for later replacement, but are intentionally
-    // not played in the current build. Short one-shots sounded mechanical when repeated.
+    private void Update()
+    {
+        if (reelSource == null) return;
+
+        float targetVolume = reelRequested && CanPlay ? Mathf.Clamp01(settings.ReelVolume) : 0f;
+        float fadeDuration = Mathf.Max(.01f, settings.ReelFadeDuration);
+        reelSource.volume = Mathf.MoveTowards(reelSource.volume, targetVolume,
+            Time.unscaledDeltaTime / fadeDuration);
+
+        if (!reelRequested && reelSource.isPlaying && reelSource.volume <= .001f)
+        {
+            reelSource.Stop();
+            reelSource.time = 0f;
+        }
+    }
+
+    // Footsteps remain disabled. Reeling uses one continuously looping source instead of
+    // replaying short one-shots, so holding the input produces a single mechanical motion.
     public void PlayCast() => PlayPrimary(settings?.FishingCast, settings?.ActionVolume ?? 0f);
     public void PlaySplash() => PlayPrimary(settings?.WaterSplash, (settings?.ActionVolume ?? 0f) * .9f);
     public void PlayBite() => PlayPrimary(settings?.FishBite, settings?.BiteVolume ?? 0f);
-    public void PlayReel() { }
+
+    public void SetReeling(bool active)
+    {
+        if (!CanPlay || reelSource == null) return;
+        reelRequested = active;
+        if (!active || reelSource.isPlaying) return;
+
+        reelSource.volume = 0f;
+        reelSource.pitch = 1f;
+        reelSource.Play();
+    }
+
+    public void StopReel(bool immediate = false)
+    {
+        reelRequested = false;
+        if (!immediate || reelSource == null) return;
+        reelSource.Stop();
+        reelSource.volume = 0f;
+        reelSource.time = 0f;
+    }
 
     public void PlaySell(bool all)
     {
@@ -158,4 +208,8 @@ public sealed class FishingAudioDirector : MonoBehaviour
         source.pitch = 1f;
         source.PlayOneShot(clip, Mathf.Clamp01(volume));
     }
+
+    private void OnDisable() => StopReel(true);
+
+    private void OnDestroy() => StopReel(true);
 }

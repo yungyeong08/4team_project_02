@@ -331,7 +331,9 @@ public sealed class FishingGameController : MonoBehaviour
     private void Reel()
     {
         reelUiReveal = Mathf.MoveTowards(reelUiReveal, 1f, Time.deltaTime * 6f);
-        float input = (Input.GetMouseButton(0) || Input.GetKey(KeyCode.Space)) ? 1f : -1f;
+        bool reelHeld = Input.GetMouseButton(0) || Input.GetKey(KeyCode.Space);
+        audioDirector?.SetReeling(reelHeld);
+        float input = reelHeld ? 1f : -1f;
         float zoneSize = AdjustedReelZoneSize;
         float rodFishSpeedMultiplier = EquippedRod != null ? EquippedRod.FishSpeedMultiplier : 1f;
 
@@ -368,6 +370,7 @@ public sealed class FishingGameController : MonoBehaviour
 
     private void ResetFishing(string newMessage)
     {
+        audioDirector?.StopReel();
         bool caughtFish = state == State.Reeling && progress >= 1f;
         bool escapedFish = state == State.Reeling && escape >= 1f;
         resultFish = caughtFish ? currentFish : null;

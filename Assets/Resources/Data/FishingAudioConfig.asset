@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: FishingAudioConfig
   m_EditorClassIdentifier: Assembly-CSharp::FishingAudioConfig
   Settings:
-    SoundEffectsEnabled: 0
+    SoundEffectsEnabled: 1
     FishCatchSfx: {fileID: 0}
     NewFishSfx: {fileID: 0}
     FootstepGrass: {fileID: 0}
     FishingCast: {fileID: 0}
     WaterSplash: {fileID: 0}
     FishBite: {fileID: 0}
-    FishingReel: {fileID: 0}
+    FishingReel: {fileID: 8300000, guid: fe57df0b6e809644bab8640d7c1f8aa6, type: 3}
     Sell: {fileID: 0}
     SellAll: {fileID: 0}
     Purchase: {fileID: 0}
@@ -37,5 +37,7 @@ MonoBehaviour:
     FootstepVolume: 0.2
     UiVolume: 0.15
     MenuVolume: 0.28
+    ReelVolume: 0.78
+    ReelFadeDuration: 0.05
     NewFishDelay: 0.56
     QuestCompleteDelay: 0.72
