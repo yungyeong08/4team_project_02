@@ -3,120 +3,104 @@ using UnityEngine.SceneManagement;
 
 public class FishingTitleScreen : MonoBehaviour
 {
-    [Header("--- 폰트 & 배경 설정 ---")]
     public Font customFont;
-    public Texture2D backgroundImage; 
+    public Texture2D backgroundImage;
+    public AudioSource bgmAudioSource, sfxAudioSource;
+    [Range(0f, 1f)] public float bgmVolume = 1f, sfxVolume = 1f;
 
-    [Header("--- 게임 제목 설정 ---")]
+    [Header("타이틀 설정")]
     public string gameTitle = "인생 2회차 : 어부";
-    [Range(20, 100)] public int titleFontSize = 55;
+    public int titleSize = 55;
+    public float titleXOffset = 0f;    
     public float titleYOffset = -240f; 
+    public bool enableTitleAnim = true; 
 
-    [Header("--- 버튼 크기 & 위치 설정 ---")]
-    [Range(10, 60)] public int buttonFontSize = 26;
-    public float buttonWidth = 400f;
-    public float buttonHeight = 70f;
-    public float buttonCenterY = -20f; 
-    public float buttonSpacing = 90f;  
+    [Header("메인 버튼")]
+    public int btnSize = 26;
+    public float btnW = 400f, btnH = 65f, btnGap = 75f;
 
-    [Header("--- 도움말 팝업 설정 ---")]
-    public float helpBoxWidth = 650f;
-    public float helpBoxHeight = 420f; 
-    [Range(15, 50)] public int helpTitleFontSize = 28; 
-    [Range(10, 40)] public int helpTextFontSize = 22; 
+    [Header("팝업 설정")]
+    public float popW = 650f, popH = 420f;
 
-    [TextArea(5, 10)]
-    public string helpMessage = "• 이동: 방향키 또는 W,A,S,D 키\n\n" +
-                                "• 낚시하기: F키로 낚싯대 던지기 및 스페이스바(Space)로 물고기 잡기.\n\n" +
-                                "• 상점 : 내가 잡은 물고기를 확인할 수 있어요!\n\n" +
-                                "• 잡은 물고기는 상점에서 판매해보세요!\n\n" +
-                                "• 더 좋은 낚싯대를 구입할 수 있습니다!";
+    [Header("도움말 글씨 설정")]
+    public int helpFontSize = 20;       
+    public float helpXOffset = 35f;     
+    public float helpYOffset = 70f;     
 
-    private bool showHelp = false;
+    [TextArea(3, 6)]
+    public string helpMsg = "• 이동: 방향키 / WASD\n\n• 낚시: F키(찌) / Space(잡기)\n\n• 상점: 잡은 물고기를 팔고 낚싯대를 구하세요!";
+
+    private bool showHelp, showSet;
+
+    private void Update()
+    {
+        if (bgmAudioSource) bgmAudioSource.volume = bgmVolume;
+        if (sfxAudioSource) sfxAudioSource.volume = sfxVolume;
+    }
 
     private void OnGUI()
     {
-        float cx = Screen.width / 2f;
-        float cy = Screen.height / 2f;
+        float cx = Screen.width / 2f, cy = Screen.height / 2f;
 
-      
-        if (backgroundImage != null)
-        {
-            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), backgroundImage);
-        }
+        
+        if (backgroundImage) GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), backgroundImage);
 
-  
-        GUIStyle titleStyle = new GUIStyle(GUI.skin.label)
-        {
-            fontSize = titleFontSize,
-            alignment = TextAnchor.MiddleCenter,
-            fontStyle = FontStyle.Bold,
-            font = customFont
-        };
-        titleStyle.normal.textColor = Color.white;
+        
+        float animY = enableTitleAnim ? Mathf.Sin(Time.time * 2f) * 10f : 0f;
+        GUI.Label(new Rect(cx - 300f + titleXOffset, cy + titleYOffset + animY, 600f, 100f), gameTitle, Style(titleSize, TextAnchor.MiddleCenter, true));
 
-        GUI.Label(
-            new Rect(cx - 300f, cy + titleYOffset, 600f, 100f),
-            gameTitle,
-            titleStyle
-        );
+        
+        GUIStyle bStyle = Style(btnSize, TextAnchor.MiddleCenter, false, true);
+        float bx = cx - (btnW / 2f), by = cy - 40f - btnGap;
+
+        if (GUI.Button(new Rect(bx, by, btnW, btnH), "게임 시작", bStyle)) SceneManager.LoadScene("FishingDemo");
+        if (GUI.Button(new Rect(bx, by + btnGap, btnW, btnH), "도움말", bStyle)) Toggle(ref showHelp, ref showSet);
+        if (GUI.Button(new Rect(bx, by + (btnGap * 2), btnW, btnH), "환경 설정", bStyle)) Toggle(ref showSet, ref showHelp);
+        if (GUI.Button(new Rect(bx, by + (btnGap * 3), btnW, btnH), "게임 종료", bStyle)) QuitGame();
 
 
-        GUIStyle btnStyle = new GUIStyle(GUI.skin.button)
-        {
-            fontSize = buttonFontSize,
-            font = customFont
-        };
-
-        float btnX = cx - (buttonWidth / 2f);
-
-
-        if (GUI.Button(new Rect(btnX, cy + buttonCenterY - buttonSpacing, buttonWidth, buttonHeight), "게임 시작", btnStyle))
-        {
-            SceneManager.LoadScene("FishingDemo");
-        }
-
-   
-        if (GUI.Button(new Rect(btnX, cy + buttonCenterY, buttonWidth, buttonHeight), "도움말", btnStyle))
-        {
-            showHelp = !showHelp;
-        }
-
-    
-        if (GUI.Button(new Rect(btnX, cy + buttonCenterY + buttonSpacing, buttonWidth, buttonHeight), "게임 종료", btnStyle))
-        {
-#if UNITY_EDITOR
-            UnityEditor.EditorApplication.isPlaying = false;
-#else
-            Application.Quit();
-#endif
-        }
-
-      
         if (showHelp)
         {
-          
-            GUIStyle boxStyle = new GUIStyle(GUI.skin.box)
-            {
-                fontSize = helpTitleFontSize,
-                fontStyle = FontStyle.Bold,
-                font = customFont
-            };
-            GUI.Box(new Rect(cx - (helpBoxWidth / 2f), cy - (helpBoxHeight / 2f), helpBoxWidth, helpBoxHeight), "\n[ 도 움 말 ]", boxStyle);
-
-          
-            GUIStyle helpTextStyle = new GUIStyle(GUI.skin.label)
-            {
-                fontSize = helpTextFontSize,
-                font = customFont
-            };
-            helpTextStyle.normal.textColor = Color.white;
-
-            GUI.Label(
-                new Rect(cx - (helpBoxWidth / 2f) + 35f, cy - (helpBoxHeight / 2f) + 70f, helpBoxWidth - 70f, helpBoxHeight - 90f),
-                helpMessage,
-                helpTextStyle
-            );
+            DrawBox(cx, cy, "\n[ 도 움 말 ]");
+            GUI.Label(new Rect(cx - (popW / 2f) + helpXOffset, cy - (popH / 2f) + helpYOffset, popW - 70f, popH - 90f), helpMsg, Style(helpFontSize));
         }
+
+        
+        if (showSet)
+        {
+            DrawBox(cx, cy, "\n[ 환 경 설 정 ]");
+            float sy = cy - (popH / 2f) + 80f;
+            bgmVolume = DrawSlider(cx - 220f, sy, $"배경음 (BGM): {Mathf.RoundToInt(bgmVolume * 100)}%", bgmVolume);
+            sfxVolume = DrawSlider(cx - 220f, sy + 110f, $"효과음 (SFX): {Mathf.RoundToInt(sfxVolume * 100)}%", sfxVolume);
+        }
+    }
+
+  
+    private GUIStyle Style(int sz, TextAnchor align = TextAnchor.UpperLeft, bool bold = false, bool isBtn = false) =>
+        new GUIStyle(isBtn ? GUI.skin.button : GUI.skin.label) { fontSize = sz, alignment = align, font = customFont, fontStyle = bold ? FontStyle.Bold : FontStyle.Normal };
+
+    private void DrawBox(float cx, float cy, string title) =>
+        GUI.Box(new Rect(cx - (popW / 2f), cy - (popH / 2f), popW, popH), title, Style(28, TextAnchor.UpperCenter, true, true));
+
+    private float DrawSlider(float x, float y, string label, float val)
+    {
+        GUI.Label(new Rect(x, y, 440f, 35f), label, Style(20));
+        return GUI.HorizontalSlider(new Rect(x, y + 40f, 440f, 45f), val, 0f, 1f,
+            new GUIStyle(GUI.skin.horizontalSlider) { fixedHeight = 20f },
+            new GUIStyle(GUI.skin.horizontalSliderThumb) { fixedWidth = 30f, fixedHeight = 35f });
+    }
+
+    private void Toggle(ref bool target, ref bool other) { target = !target; other = false; }
+
+
+    private void QuitGame()
+    {
+#if UNITY_EDITOR
+    // 유니티 에디터에서 플레이 중일 때: Play 모드를 중지시킴
+    UnityEditor.EditorApplication.isPlaying = false;
+#else
+        // 빌드된 진짜 게임 파일(.exe)일 때: 게임 완전히 종료
+        Application.Quit();
+#endif
     }
 }
