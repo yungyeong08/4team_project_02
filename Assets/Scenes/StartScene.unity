@@ -240,6 +240,27 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d2f931a7283588c4f838ad46e7857eb0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FishingTitleScreen
+  customFont: {fileID: 12800000, guid: e8f15e8ce87e2734a86ffa8190a687e9, type: 3}
+  backgroundImage: {fileID: 0}
+  gameTitle: "\uC778\uC0DD 2\uD68C\uCC28 : \uC5B4\uBD80"
+  titleFontSize: 78
+  titleYOffset: -350
+  buttonFontSize: 43
+  buttonWidth: 500
+  buttonHeight: 100
+  buttonCenterY: -20
+  buttonSpacing: 120
+  helpBoxWidth: 750
+  helpBoxHeight: 580
+  helpTitleFontSize: 28
+  helpTextFontSize: 22
+  helpMessage: "\u2022 \uC774\uB3D9: \uBC29\uD5A5\uD0A4 \uB610\uB294 W,A,S,D \uD0A4\n\n\u2022
+    \uB09A\uC2DC\uD558\uAE30: F\uD0A4\uB85C \uB09A\uC2EF\uB300 \uB358\uC9C0\uAE30
+    \uBC0F \uC2A4\uD398\uC774\uC2A4\uBC14(Space)\uB85C \uBB3C\uACE0\uAE30 \uC7A1\uAE30.\n\n\u2022
+    \uC0C1\uC810 : \uB0B4\uAC00 \uC7A1\uC740 \uBB3C\uACE0\uAE30\uB97C \uD655\uC778\uD560
+    \uC218 \uC788\uC5B4\uC694!\n\n\u2022 \uC7A1\uC740 \uBB3C\uACE0\uAE30\uB294 \uC0C1\uC810\uC5D0\uC11C
+    \uD310\uB9E4\uD574\uBCF4\uC138\uC694!\n\n\u2022 \uB354 \uC88B\uC740 \uB09A\uC2EF\uB300\uB97C
+    \uAD6C\uC785\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4!"
 --- !u!4 &1675369426
 Transform:
   m_ObjectHideFlags: 0
