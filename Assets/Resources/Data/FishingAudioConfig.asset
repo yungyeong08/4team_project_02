@@ -21,23 +21,23 @@ MonoBehaviour:
     WaterSplash: {fileID: 0}
     FishBite: {fileID: 0}
     FishingReel: {fileID: 8300000, guid: fe57df0b6e809644bab8640d7c1f8aa6, type: 3}
-    Sell: {fileID: 0}
-    SellAll: {fileID: 0}
+    Sell: {fileID: 8300000, guid: 39ef86ca251c939469e072cac8fc5c71, type: 3}
+    SellAll: {fileID: 8300000, guid: b33907b8bb42ec84bbf7417ab5570635, type: 3}
     Purchase: {fileID: 0}
     DebtRepay: {fileID: 0}
     QuestComplete: {fileID: 0}
-    UiClick: {fileID: 0}
+    UiClick: {fileID: 8300000, guid: 5ae71e97118aa714da3487328d475786, type: 3}
     MenuOpen: {fileID: 0}
     MenuClose: {fileID: 0}
     FishCatchVolume: 0.5
     NewFishVolume: 0.55
     BiteVolume: 0.78
     ActionVolume: 0.55
-    RewardVolume: 0.55
+    RewardVolume: 0.6
     FootstepVolume: 0.2
-    UiVolume: 0.15
+    UiVolume: 0.18
     MenuVolume: 0.28
-    ReelVolume: 0.78
+    ReelVolume: 0.38
     ReelFadeDuration: 0.05
     NewFishDelay: 0.56
     QuestCompleteDelay: 0.72

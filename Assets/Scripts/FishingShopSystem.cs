@@ -181,7 +181,11 @@ public sealed class FishingShopSystem : MonoBehaviour
         FishingUiTheme.DrawPanel(panel);
 
         FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 180f, panel.y - 14f, panel.width - 360f, 56f), "낚시 상점");
-        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 15f, 40f, 36f), "×", danger: true)) CloseShop();
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 15f, 40f, 36f), "×", danger: true))
+        {
+            audioDirector?.PlayUiClick();
+            CloseShop();
+        }
 
         int balance = wallet != null ? wallet.Balance : 0;
         FishingUiTheme.DrawMoneyChip(new Rect(panel.x + 24f, panel.y + 59f, 190f, 40f), balance);

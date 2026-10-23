@@ -211,7 +211,11 @@ public sealed class FishMarketSystem : MonoBehaviour
         FishingUiTheme.DrawPanel(panel);
 
         FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 230f, panel.y - 14f, panel.width - 460f, 56f), "물고기 판매소");
-        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 15f, 40f, 36f), "×", danger: true)) CloseShop();
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 57f, panel.y + 15f, 40f, 36f), "×", danger: true))
+        {
+            audioDirector?.PlayUiClick();
+            CloseShop();
+        }
         FishingUiTheme.DrawMoneyChip(new Rect(panel.x + 24f, panel.y + 59f, 200f, 40f), wallet != null ? wallet.Balance : 0);
         GUI.Label(new Rect(panel.x + 240f, panel.y + 61f, panel.width - 264f, 36f),
             "잡은 물고기를 골드로 바꿔 장비를 마련하세요", FishingUiTheme.Small);

@@ -207,13 +207,22 @@ public sealed class PlayerProgressUI : MonoBehaviour
         float menuX = hud.ScreenMargin;
         if (FishingUiTheme.DrawMenuButton(new Rect(menuX, menuY, buttonWidth, buttonHeight),
                 FishingUiTheme.HudIcon.Bag, "가방", "I"))
+        {
+            audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Inventory);
+        }
         if (FishingUiTheme.DrawMenuButton(new Rect(menuX + buttonWidth + gap, menuY, buttonWidth, buttonHeight),
                 FishingUiTheme.HudIcon.Book, "도감", "C"))
+        {
+            audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Codex);
+        }
         if (FishingUiTheme.DrawMenuButton(new Rect(menuX + (buttonWidth + gap) * 2f, menuY, buttonWidth, buttonHeight),
                 FishingUiTheme.HudIcon.Menu, "메뉴", "ESC"))
+        {
+            audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Pause);
+        }
     }
 
     private Rect BeginLargePanel(float screenWidth, float screenHeight, string title)
@@ -224,7 +233,11 @@ public sealed class PlayerProgressUI : MonoBehaviour
         FishingUiTheme.DrawPanel(panel);
         float plateWidth = Mathf.Min(430f, panel.width - 180f);
         FishingUiTheme.DrawTitlePlate(new Rect(panel.x + (panel.width - plateWidth) * .5f, panel.y - 14f, plateWidth, 56f), title);
-        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 59f, panel.y + 15f, 40f, 36f), "×", danger: true)) CloseWindow();
+        if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 59f, panel.y + 15f, 40f, 36f), "×", danger: true))
+        {
+            audioDirector?.PlayUiClick();
+            CloseWindow();
+        }
         return panel;
     }
 
@@ -430,11 +443,31 @@ public sealed class PlayerProgressUI : MonoBehaviour
         GUI.enabled = oldEnabled;
 
         float menuY = y + 142f;
-        if (FishingUiTheme.StyledButton(new Rect(x, menuY, width, 52f), "게임 계속하기", primary: true)) CloseWindow();
-        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 62f, width, 52f), "저장")) statusMessage = saveSystem != null && saveSystem.Save() ? "게임을 저장했습니다." : "저장하지 못했습니다.";
-        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 124f, width, 52f), "메인 메뉴")) OpenWindow(WindowMode.MainMenu);
-        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 186f, width, 52f), "게임 초기화", danger: true)) OpenWindow(WindowMode.ResetConfirm);
-        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 248f, width, 52f), "게임 종료", danger: true)) QuitGame();
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY, width, 52f), "게임 계속하기", primary: true))
+        {
+            audioDirector?.PlayUiClick();
+            CloseWindow();
+        }
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 62f, width, 52f), "저장"))
+        {
+            audioDirector?.PlayUiClick();
+            statusMessage = saveSystem != null && saveSystem.Save() ? "게임을 저장했습니다." : "저장하지 못했습니다.";
+        }
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 124f, width, 52f), "메인 메뉴"))
+        {
+            audioDirector?.PlayUiClick();
+            OpenWindow(WindowMode.MainMenu);
+        }
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 186f, width, 52f), "게임 초기화", danger: true))
+        {
+            audioDirector?.PlayUiClick();
+            OpenWindow(WindowMode.ResetConfirm);
+        }
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY + 248f, width, 52f), "게임 종료", danger: true))
+        {
+            audioDirector?.PlayUiClick();
+            QuitGame();
+        }
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 92f, panel.width - 60f, 54f), statusMessage, FishingUiTheme.BodyCentered);
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 42f, panel.width - 60f, 24f), "ESC로 게임에 돌아가기", FishingUiTheme.SmallCentered);
     }
@@ -463,10 +496,21 @@ public sealed class PlayerProgressUI : MonoBehaviour
     {
         Rect panel = CenterPanel(screenWidth, screenHeight, 560f, 430f, "픽셀 낚시 마을");
         GUI.Label(new Rect(panel.x + 50f, panel.y + 76f, panel.width - 100f, 34f), "현재 진행 상황은 그대로 유지됩니다.", FishingUiTheme.BodyCentered);
-        if (FishingUiTheme.StyledButton(new Rect(panel.x + 105f, panel.y + 135f, panel.width - 210f, 54f), "이어하기", primary: true)) CloseWindow();
+        if (FishingUiTheme.StyledButton(new Rect(panel.x + 105f, panel.y + 135f, panel.width - 210f, 54f), "이어하기", primary: true))
+        {
+            audioDirector?.PlayUiClick();
+            CloseWindow();
+        }
         if (FishingUiTheme.StyledButton(new Rect(panel.x + 105f, panel.y + 205f, panel.width - 210f, 54f), "저장 데이터 다시 불러오기"))
+        {
+            audioDirector?.PlayUiClick();
             statusMessage = saveSystem != null && saveSystem.TryLoad() ? saveSystem.LastStatus : "불러올 저장 데이터가 없습니다.";
-        if (FishingUiTheme.StyledButton(new Rect(panel.x + 105f, panel.y + 275f, panel.width - 210f, 54f), "게임 종료", danger: true)) QuitGame();
+        }
+        if (FishingUiTheme.StyledButton(new Rect(panel.x + 105f, panel.y + 275f, panel.width - 210f, 54f), "게임 종료", danger: true))
+        {
+            audioDirector?.PlayUiClick();
+            QuitGame();
+        }
         GUI.Label(new Rect(panel.x + 30f, panel.yMax - 50f, panel.width - 60f, 28f), statusMessage, FishingUiTheme.BodyCentered);
     }
 
@@ -481,9 +525,13 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
         float buttonY = panel.y + 222f;
         if (FishingUiTheme.StyledButton(new Rect(panel.x + 55f, buttonY, 210f, 54f), "취소"))
+        {
+            audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Pause);
+        }
         if (FishingUiTheme.StyledButton(new Rect(panel.xMax - 265f, buttonY, 210f, 54f), "초기화", danger: true))
         {
+            audioDirector?.PlayUiClick();
             bool reset = saveSystem != null && saveSystem.ResetGame();
             statusMessage = reset ? "게임을 처음 상태로 초기화했습니다." : "게임을 초기화하지 못했습니다.";
             if (reset) CloseWindow();

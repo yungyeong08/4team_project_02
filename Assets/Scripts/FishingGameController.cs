@@ -309,6 +309,9 @@ public sealed class FishingGameController : MonoBehaviour
         actionAvailable = true;
         if (bobber != null) bobber.GetComponent<SpriteRenderer>().color = Color.yellow;
         audioDirector?.PlayBite();
+        // The reel is the minigame's continuous tension bed. It starts with the bite and
+        // stays active regardless of button input until ResetFishing ends the minigame.
+        audioDirector?.SetReeling(true);
         if (activeFishingSpot != null) FishingWorldFx.SpawnRipple(activeFishingSpot.BobberPosition,
             new Color(1f, .9f, .35f, .86f), .42f, .82f);
         if (bobber != null) StartCoroutine(ShakeBobber());
@@ -332,7 +335,6 @@ public sealed class FishingGameController : MonoBehaviour
     {
         reelUiReveal = Mathf.MoveTowards(reelUiReveal, 1f, Time.deltaTime * 6f);
         bool reelHeld = Input.GetMouseButton(0) || Input.GetKey(KeyCode.Space);
-        audioDirector?.SetReeling(reelHeld);
         float input = reelHeld ? 1f : -1f;
         float zoneSize = AdjustedReelZoneSize;
         float rodFishSpeedMultiplier = EquippedRod != null ? EquippedRod.FishSpeedMultiplier : 1f;

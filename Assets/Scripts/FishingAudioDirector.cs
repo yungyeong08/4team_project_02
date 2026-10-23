@@ -60,6 +60,7 @@ public sealed class FishingAudioSettings
 public sealed class FishingAudioDirector : MonoBehaviour
 {
     private AudioSource source;
+    private AudioSource uiSource;
     private AudioSource reelSource;
     private FishingAudioSettings settings;
     private Coroutine catchSequence;
@@ -77,6 +78,14 @@ public sealed class FishingAudioDirector : MonoBehaviour
         source.playOnAwake = false;
         source.spatialBlend = 0f;
         source.volume = 1f;
+
+        if (settings.UiClick != null || settings.MenuOpen != null || settings.MenuClose != null)
+        {
+            uiSource = gameObject.AddComponent<AudioSource>();
+            uiSource.playOnAwake = false;
+            uiSource.spatialBlend = 0f;
+            uiSource.volume = 1f;
+        }
 
         if (settings.FishingReel != null)
         {
@@ -107,7 +116,7 @@ public sealed class FishingAudioDirector : MonoBehaviour
     }
 
     // Footsteps remain disabled. Reeling uses one continuously looping source instead of
-    // replaying short one-shots, so holding the input produces a single mechanical motion.
+    // replaying short one-shots, so the whole minigame has one continuous tension sound.
     public void PlayCast() => PlayPrimary(settings?.FishingCast, settings?.ActionVolume ?? 0f);
     public void PlaySplash() => PlayPrimary(settings?.WaterSplash, (settings?.ActionVolume ?? 0f) * .9f);
     public void PlayBite() => PlayPrimary(settings?.FishBite, settings?.BiteVolume ?? 0f);
@@ -204,9 +213,12 @@ public sealed class FishingAudioDirector : MonoBehaviour
 
     private void PlayUi(AudioClip clip, float volume)
     {
-        if (!CanPlay || clip == null || source.isPlaying) return;
-        source.pitch = 1f;
-        source.PlayOneShot(clip, Mathf.Clamp01(volume));
+        if (!CanPlay || clip == null || uiSource == null) return;
+        // Restart on the dedicated UI channel so each accepted button click produces one cue
+        // without cutting off a sale/reward sound on the primary gameplay channel.
+        uiSource.Stop();
+        uiSource.pitch = 1f;
+        uiSource.PlayOneShot(clip, Mathf.Clamp01(volume));
     }
 
     private void OnDisable() => StopReel(true);
