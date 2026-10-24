@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::FishingAudioConfig
   Settings:
     SoundEffectsEnabled: 1
-    FishCatchSfx: {fileID: 0}
+    FishCatchSfx: {fileID: 8300000, guid: 15365a7d73f15054ab26c01672b2c2b8, type: 3}
     NewFishSfx: {fileID: 0}
     FootstepGrassClips:
     - {fileID: 8300000, guid: a0a3868129f79164da93e2e3f61683f3, type: 3}

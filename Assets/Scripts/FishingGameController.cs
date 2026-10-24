@@ -55,6 +55,7 @@ public sealed class FishingGameController : MonoBehaviour
     private float resultUiReveal;
     private bool firstCatchResult;
     private bool newFishResult;
+    private bool catchResultSoundPlayed;
     private float newFishUiReveal;
     private float actionPromptVisibility;
     private string lastRegionId = "";
@@ -219,6 +220,11 @@ public sealed class FishingGameController : MonoBehaviour
         if (resultDelayTimer > 0f)
         {
             resultDelayTimer -= Time.unscaledDeltaTime;
+            if (resultDelayTimer <= 0f)
+            {
+                resultDelayTimer = 0f;
+                PlayCatchResultSoundOnce();
+            }
         }
         else if (resultTimer > 0f)
         {
@@ -403,13 +409,14 @@ public sealed class FishingGameController : MonoBehaviour
 
     private void ResetFishing(string newMessage)
     {
-        audioDirector?.StopReel();
+        audioDirector?.StopReel(true);
         bool caughtFish = state == State.Reeling && progress >= 1f;
         bool escapedFish = state == State.Reeling && escape >= 1f;
         resultFish = caughtFish ? currentFish : null;
         resultSuccess = caughtFish;
         firstCatchResult = caughtFish && fishInventory != null && fishInventory.TotalLifetimeCaught == 0;
         newFishResult = false;
+        catchResultSoundPlayed = false;
         resultDetails = caughtFish && currentFish != null
             ? $"{currentFish.DisplayName} · {currentFish.RarityName} · 판매가 {currentFish.SalePrice:N0} G"
             : escapedFish ? "물고기를 놓쳤습니다. 다시 도전해 보세요." : "";
@@ -419,7 +426,6 @@ public sealed class FishingGameController : MonoBehaviour
             string usedRodId = rodInventory != null ? rodInventory.EquippedRodId : "";
             newFishResult = fishInventory.Add(currentFish.Id);
             earlyGameProgress?.NotifyFishCaught(caughtSpotId, usedRodId);
-            audioDirector?.PlayCatchSequence(newFishResult);
             if (activeFishingSpot != null) FishingWorldFx.SpawnCatchSplash(activeFishingSpot.BobberPosition);
         }
         resultTimer = caughtFish || escapedFish ? 5.5f : 0f;
@@ -445,6 +451,13 @@ public sealed class FishingGameController : MonoBehaviour
             StopCoroutine(castSequence);
             castSequence = null;
         }
+    }
+
+    private void PlayCatchResultSoundOnce()
+    {
+        if (!resultSuccess || catchResultSoundPlayed) return;
+        catchResultSoundPlayed = true;
+        audioDirector?.PlayCatchSuccess();
     }
 
     private void OnGUI()

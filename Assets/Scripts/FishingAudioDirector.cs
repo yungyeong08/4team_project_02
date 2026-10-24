@@ -217,6 +217,16 @@ public sealed class FishingAudioDirector : MonoBehaviour
     public void PlayMenuOpen() => PlayUi(settings?.MenuOpen, settings?.MenuVolume ?? 0f);
     public void PlayMenuClose() => PlayUi(settings?.MenuClose, settings?.MenuVolume ?? 0f);
 
+    public void PlayCatchSuccess()
+    {
+        if (catchSequence != null)
+        {
+            StopCoroutine(catchSequence);
+            catchSequence = null;
+        }
+        PlayPrimary(settings?.FishCatchSfx, settings?.FishCatchVolume ?? 0f);
+    }
+
     public void PlayCatchSequence(bool isNewFish)
     {
         if (!CanPlay) return;
