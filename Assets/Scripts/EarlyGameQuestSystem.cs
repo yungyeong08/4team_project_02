@@ -434,7 +434,7 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
         FishingUiTheme.Ensure();
 
         FishingHudSettings hud = FishingUiTheme.Settings;
-        float sideWidth = Mathf.Min(hud.SidePanelWidth, (width - hud.ScreenMargin * 4f) * .25f);
+        float sideWidth = Mathf.Min(hud.SidePanelWidth + 80f, (width - hud.ScreenMargin * 4f) * .31f);
 
         if (!CenterNoticeSequenceActive) DrawQuestPanel(width, sideWidth, hud);
         DrawCenterNotice(width, hud);
@@ -447,38 +447,46 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
 
     private void DrawQuestPanel(float width, float sideWidth, FishingHudSettings hud)
     {
-        float panelHeight = tutorialStep != EarlyTutorialStep.Complete || ActiveQuest == null ? 92f : 106f;
-        Rect questPanel = new(width - hud.ScreenMargin - sideWidth, hud.ScreenMargin, sideWidth, panelHeight);
+        const float extraMargin = 12f;
+        float panelHeight = tutorialStep != EarlyTutorialStep.Complete || ActiveQuest == null ? 120f : 164f;
+        Rect questPanel = new(width - hud.ScreenMargin - extraMargin - sideWidth,
+            hud.ScreenMargin + extraMargin, sideWidth, panelHeight);
         string questCaption = tutorialStep != EarlyTutorialStep.Complete ? "현재 목표" : "현재 퀘스트";
-        FishingUiTheme.DrawHudPanel(questPanel, questIcon == null ? questCaption : "", FishingUiTheme.AccentBright);
         if (questIcon != null)
         {
-            Rect iconRect = new(questPanel.x + 13f, questPanel.y + 5f, 22f, 22f);
+            Rect iconRect = new(questPanel.x, questPanel.y, 34f, 34f);
             GUI.DrawTexture(iconRect, questIcon, ScaleMode.ScaleToFit, true);
-            FishingUiTheme.ColoredLabel(new Rect(questPanel.x + 40f, questPanel.y + 7f, questPanel.width - 52f, 18f),
-                questCaption, FishingUiTheme.HudCaption, FishingUiTheme.AccentBright);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x + 44f, questPanel.y + 3f, questPanel.width - 44f, 28f),
+                questCaption, FishingUiTheme.OverlayCaption, FishingUiTheme.Gold);
         }
+        else FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.y + 3f, questPanel.width, 28f),
+            questCaption, FishingUiTheme.OverlayCaption, FishingUiTheme.Gold);
+        FishingUiTheme.DrawFlatRect(new Rect(questPanel.x, questPanel.y + 38f, questPanel.width, 2f),
+            new Color(FishingUiTheme.AccentBright.r, FishingUiTheme.AccentBright.g, FishingUiTheme.AccentBright.b, .7f));
         if (tutorialStep != EarlyTutorialStep.Complete)
         {
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 27f, questPanel.width - 32f, 38f),
-                CondensedTutorialMessage, FishingUiTheme.Heading);
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.yMax - 25f, questPanel.width - 32f, 18f),
-                "첫 플레이 가이드", FishingUiTheme.Small);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.y + 46f, questPanel.width, 38f),
+                CondensedTutorialMessage, FishingUiTheme.OverlayTitle, FishingUiTheme.Cream);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.yMax - 27f, questPanel.width, 24f),
+                "첫 플레이 가이드", FishingUiTheme.OverlaySmall, FishingUiTheme.Cream);
         }
         else if (ActiveQuest != null)
         {
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 27f, questPanel.width - 32f, 26f), ActiveQuest.Title, FishingUiTheme.Heading);
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 52f, questPanel.width - 32f, 24f), ActiveQuest.Description, FishingUiTheme.Small);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.y + 44f, questPanel.width, 34f),
+                ActiveQuest.Title, FishingUiTheme.OverlayTitle, FishingUiTheme.Cream);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.y + 80f, questPanel.width, 46f),
+                ActiveQuest.Description, FishingUiTheme.OverlayDescription, FishingUiTheme.Cream);
             string progressUnit = ActiveQuest.Goal == EarlyQuestGoal.RepayDebt ? " G" : "";
-            FishingUiTheme.DrawBar(new Rect(questPanel.x + 16f, questPanel.yMax - 34f, questPanel.width - 32f, 24f),
-                (float)questProgress / ActiveQuest.TargetAmount, FishingUiTheme.AccentBright,
-                $"진행 {questProgress:N0} / {ActiveQuest.TargetAmount:N0}{progressUnit}   ·   보상 {ActiveQuest.RewardGold:N0} G");
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.yMax - 31f, questPanel.width, 28f),
+                $"진행 {questProgress:N0} / {ActiveQuest.TargetAmount:N0}{progressUnit}   ·   보상 {ActiveQuest.RewardGold:N0} G",
+                FishingUiTheme.OverlaySmall, FishingUiTheme.AccentBright);
         }
         else
         {
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 31f, questPanel.width - 32f, 27f), "첫 지역 퀘스트 완료", FishingUiTheme.Heading);
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 59f, questPanel.width - 32f, 26f),
-                "더 좋은 낚시터에 갈 준비가 되었습니다.", FishingUiTheme.Small);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.y + 46f, questPanel.width, 34f),
+                "첫 지역 퀘스트 완료", FishingUiTheme.OverlayTitle, FishingUiTheme.Cream);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(questPanel.x, questPanel.y + 81f, questPanel.width, 29f),
+                "더 좋은 낚시터에 갈 준비가 되었습니다.", FishingUiTheme.OverlaySmall, FishingUiTheme.Cream);
         }
     }
 
@@ -507,22 +515,22 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
         if (activeNotice.Kind == CenterNoticeKind.Completion)
         {
             Rect card = new((width - 560f) * .5f, 318f + yOffset, 560f, 132f);
-            FishingUiTheme.DrawPanel(card);
-            FishingUiTheme.ColoredLabel(new Rect(card.x + 24f, card.y + 15f, card.width - 48f, 34f),
+            FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 24f, card.y + 15f, card.width - 48f, 34f),
                 activeNotice.Title, FishingUiTheme.Title, FishingUiTheme.Gold);
-            GUI.Label(new Rect(card.x + 24f, card.y + 51f, card.width - 48f, 42f), activeNotice.Message, FishingUiTheme.BodyCentered);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 24f, card.y + 51f, card.width - 48f, 42f),
+                activeNotice.Message, FishingUiTheme.OverlayBodyCentered, FishingUiTheme.Cream);
             if (activeNotice.Reward > 0)
-                GUI.Label(new Rect(card.x + 24f, card.yMax - 31f, card.width - 48f, 22f),
-                    $"보상  +{activeNotice.Reward:N0} G", FishingUiTheme.SmallCentered);
+                FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 24f, card.yMax - 31f, card.width - 48f, 22f),
+                    $"보상  +{activeNotice.Reward:N0} G", FishingUiTheme.OverlaySmallCentered, FishingUiTheme.Gold);
         }
         else
         {
-            Rect card = new((width - 520f) * .5f, hud.ScreenMargin + 142f + yOffset, 520f, 72f);
-            FishingUiTheme.DrawPanel(card, true);
-            FishingUiTheme.ColoredLabel(new Rect(card.x + 18f, card.y + 8f, card.width - 36f, 20f),
-                activeNotice.Title, FishingUiTheme.SmallCentered,
-                activeNotice.Kind == CenterNoticeKind.Objective ? FishingUiTheme.AccentBright : FishingUiTheme.Gold);
-            GUI.Label(new Rect(card.x + 18f, card.y + 29f, card.width - 36f, 34f), activeNotice.Message, FishingUiTheme.BodyCentered);
+            Rect card = new((width - 600f) * .5f, hud.ScreenMargin + 136f + yOffset, 600f, 86f);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 18f, card.y + 5f, card.width - 36f, 24f),
+                activeNotice.Title, FishingUiTheme.OverlaySmallCentered,
+                FishingUiTheme.Gold);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 18f, card.y + 30f, card.width - 36f, 43f),
+                activeNotice.Message, FishingUiTheme.OverlayStatusCentered, FishingUiTheme.Cream);
         }
         GUI.color = old;
     }

@@ -492,8 +492,11 @@ public sealed class FishingGameController : MonoBehaviour
 
         if (state == State.Waiting)
         {
-            FishingUiTheme.DrawNotice(new Rect(screenWidth * .5f - 215f, screenHeight - 112f, 430f, 48f),
-                "입질을 기다리는 중…   ·   ESC 취소", FishingUiTheme.WaterBright);
+            var waitingNotice = new Rect(screenWidth * .5f - 280f, screenHeight - 138f, 560f, 76f);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(waitingNotice.x, waitingNotice.y, waitingNotice.width, 38f),
+                "입질을 기다리는 중…", FishingUiTheme.OverlayStatusCentered, FishingUiTheme.Cream);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(waitingNotice.x, waitingNotice.y + 39f, waitingNotice.width, 28f),
+                "ESC  취소", FishingUiTheme.OverlaySmallCentered, FishingUiTheme.AccentBright);
             return;
         }
 
@@ -573,11 +576,11 @@ public sealed class FishingGameController : MonoBehaviour
         float alpha = Mathf.Clamp01(Mathf.Min(elapsed / .2f, regionNoticeTimer / .25f));
         Color old = GUI.color;
         GUI.color = new Color(1f, 1f, 1f, alpha);
-        var card = new Rect((screenWidth - 390f) * .5f, hud.ScreenMargin + 18f, 390f, 70f);
-        FishingUiTheme.DrawPanel(card, true);
-        GUI.Label(new Rect(card.x + 20f, card.y + 8f, card.width - 40f, 31f), regionTitle, FishingUiTheme.Title);
-        FishingUiTheme.ColoredLabel(new Rect(card.x + 20f, card.y + 39f, card.width - 40f, 22f),
-            regionSubtitle, FishingUiTheme.SmallCentered, FishingUiTheme.AccentBright);
+        var card = new Rect((screenWidth - 460f) * .5f, hud.ScreenMargin + 20f, 460f, 78f);
+        FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 18f, card.y + 6f, card.width - 36f, 38f),
+            regionTitle, FishingUiTheme.Title, FishingUiTheme.Cream, thickness: 2f);
+        FishingUiTheme.DrawOutlinedLabel(new Rect(card.x + 18f, card.y + 45f, card.width - 36f, 25f),
+            regionSubtitle, FishingUiTheme.OverlaySmallCentered, FishingUiTheme.AccentBright);
         GUI.color = old;
     }
 

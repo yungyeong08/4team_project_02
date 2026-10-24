@@ -178,32 +178,38 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
         FishingHudSettings hud = FishingUiTheme.Settings;
         FishingRodDefinition equipped = rodInventory?.GetEquipped(rodCatalog);
-        float sideWidth = Mathf.Min(286f, (screenWidth - hud.ScreenMargin * 4f) * .25f);
-        var statusPanel = new Rect(hud.ScreenMargin, hud.ScreenMargin, sideWidth, 82f);
-        Color rodColor = equipped != null ? equipped.RarityColor : FishingUiTheme.Muted;
-        FishingUiTheme.DrawHudPanel(statusPanel, "", rodColor);
-        FishingUiTheme.DrawMoneyChip(new Rect(statusPanel.x + 14f, statusPanel.y + 11f, 154f, 30f),
-            wallet != null ? wallet.Balance : 0);
+        float safeMargin = hud.ScreenMargin + 12f;
+        float statusX = safeMargin;
+        float statusY = safeMargin;
+        const float coinSize = 38f;
+        FishingUiTheme.DrawHudIcon(new Rect(statusX, statusY + 1f, coinSize, coinSize), FishingUiTheme.HudIcon.Coin, FishingUiTheme.Gold);
+        FishingUiTheme.DrawOutlinedLabel(new Rect(statusX + coinSize + 12f, statusY, 190f, 40f),
+            $"{(wallet != null ? wallet.Balance : 0):N0} G", FishingUiTheme.OverlayGold, FishingUiTheme.Gold);
         if (balanceFeedbackTimer > 0f && balanceDelta != 0)
         {
             float alpha = Mathf.Clamp01(balanceFeedbackTimer * 2f);
             Color color = balanceDelta > 0 ? FishingUiTheme.Gold : FishingUiTheme.Danger;
             color.a *= alpha;
-            FishingUiTheme.ColoredLabel(new Rect(statusPanel.x + 174f, statusPanel.y + 12f, statusPanel.width - 184f, 28f),
-                $"{(balanceDelta > 0 ? "+" : "")}{balanceDelta:N0} G", FishingUiTheme.Heading, color);
+            FishingUiTheme.DrawOutlinedLabel(new Rect(statusX + 205f, statusY + 2f, 145f, 36f),
+                $"{(balanceDelta > 0 ? "+" : "")}{balanceDelta:N0} G", FishingUiTheme.OverlayBody, color);
         }
 
-        var rodChip = new Rect(statusPanel.x + 14f, statusPanel.y + 45f, statusPanel.width - 28f, 28f);
-        FishingUiTheme.DrawCard(rodChip, true);
-        FishingUiTheme.DrawHudIcon(new Rect(rodChip.x + 7f, rodChip.y + 3f, 22f, 22f), FishingUiTheme.HudIcon.Rod, rodColor);
-        FishingUiTheme.ColoredLabel(new Rect(rodChip.x + 38f, rodChip.y, rodChip.width - 48f, rodChip.height),
-            equipped != null ? equipped.DisplayName : "낚싯대 없음", FishingUiTheme.Body, rodColor);
+        const float rodSize = 42f;
+        float rodY = statusY + 47f;
+        float rodTextX = statusX;
+        if (equipped?.Icon != null)
+        {
+            GUI.DrawTexture(new Rect(statusX - 2f, rodY, rodSize, rodSize), equipped.Icon, ScaleMode.ScaleToFit, true);
+            rodTextX += rodSize + 11f;
+        }
+        FishingUiTheme.DrawOutlinedLabel(new Rect(rodTextX, rodY, 280f, rodSize),
+            equipped != null ? equipped.DisplayName : "낚싯대 없음", FishingUiTheme.OverlayBody, FishingUiTheme.Cream);
 
-        const float buttonWidth = 64f;
-        const float buttonHeight = 66f;
-        const float gap = 8f;
-        float menuY = screenHeight - hud.ScreenMargin - buttonHeight;
-        float menuX = hud.ScreenMargin;
+        const float buttonWidth = 78f;
+        const float buttonHeight = 84f;
+        const float gap = 14f;
+        float menuY = screenHeight - safeMargin - buttonHeight;
+        float menuX = safeMargin;
         if (FishingUiTheme.DrawShortcutButton(new Rect(menuX, menuY, buttonWidth, buttonHeight),
                 FishingUiTheme.HudIcon.Bag, "I"))
         {

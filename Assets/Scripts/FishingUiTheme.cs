@@ -25,7 +25,7 @@ public sealed class FishingHudSettings
 /// <summary>Temporary flat IMGUI skin. Final art can replace this without changing game logic.</summary>
 public static class FishingUiTheme
 {
-    public enum HudIcon { Bag, Book, Menu, Rod }
+    public enum HudIcon { Bag, Book, Menu, Rod, Coin }
 
     public static Color Ink { get; private set; } = new(.035f, .047f, .055f, 1f);
     public static Color Panel { get; private set; } = new(.055f, .10f, .12f, .96f);
@@ -34,6 +34,8 @@ public static class FishingUiTheme
     public static Color CardAlt { get; private set; } = new(.065f, .125f, .14f, .96f);
     public static readonly Color Cream = new(.98f, .93f, .78f, 1f);
     public static readonly Color Muted = new(.64f, .72f, .68f, 1f);
+    public static readonly Color HudOutline = new(.008f, .016f, .03f, 1f);
+    public static readonly Color HudShadow = new(0f, 0f, 0f, .62f);
     public static Color Accent { get; private set; } = new(.12f, .61f, .55f, 1f);
     public static Color AccentBright { get; private set; } = new(.35f, .91f, .68f, 1f);
     public static readonly Color Water = new(.09f, .35f, .48f, 1f);
@@ -61,6 +63,16 @@ public static class FishingUiTheme
     public static GUIStyle HudCaption { get; private set; }
     public static GUIStyle HudTitle { get; private set; }
     public static GUIStyle HudAction { get; private set; }
+    public static GUIStyle OverlayCaption { get; private set; }
+    public static GUIStyle OverlayTitle { get; private set; }
+    public static GUIStyle OverlayTitleCentered { get; private set; }
+    public static GUIStyle OverlayBody { get; private set; }
+    public static GUIStyle OverlayBodyCentered { get; private set; }
+    public static GUIStyle OverlayDescription { get; private set; }
+    public static GUIStyle OverlayStatusCentered { get; private set; }
+    public static GUIStyle OverlaySmall { get; private set; }
+    public static GUIStyle OverlaySmallCentered { get; private set; }
+    public static GUIStyle OverlayGold { get; private set; }
 
     public static FishingHudSettings Settings { get; private set; } = new();
 
@@ -163,6 +175,18 @@ public static class FishingUiTheme
         HudCaption = Label(12, FontStyle.Bold, TextAnchor.MiddleLeft, Muted);
         HudTitle = Label(20, FontStyle.Bold, TextAnchor.MiddleCenter, Cream);
         HudAction = Label(15, FontStyle.Normal, TextAnchor.MiddleCenter, AccentBright);
+        OverlayCaption = Label(16, FontStyle.Bold, TextAnchor.MiddleLeft, Muted);
+        OverlayTitle = Label(25, FontStyle.Bold, TextAnchor.MiddleLeft, Cream);
+        OverlayTitleCentered = Label(25, FontStyle.Bold, TextAnchor.MiddleCenter, Cream);
+        OverlayBody = Label(19, FontStyle.Normal, TextAnchor.MiddleLeft, Cream);
+        OverlayBodyCentered = Label(19, FontStyle.Normal, TextAnchor.MiddleCenter, Cream);
+        OverlayDescription = Label(18, FontStyle.Normal, TextAnchor.UpperLeft, Cream);
+        OverlayDescription.wordWrap = true;
+        OverlayDescription.clipping = TextClipping.Clip;
+        OverlayStatusCentered = Label(22, FontStyle.Bold, TextAnchor.MiddleCenter, Cream);
+        OverlaySmall = Label(17, FontStyle.Normal, TextAnchor.MiddleLeft, Muted);
+        OverlaySmallCentered = Label(17, FontStyle.Normal, TextAnchor.MiddleCenter, Muted);
+        OverlayGold = Label(23, FontStyle.Bold, TextAnchor.MiddleLeft, Gold);
     }
 
     public static void DrawDim(Rect rect)
@@ -206,18 +230,22 @@ public static class FishingUiTheme
     public static void DrawNotice(Rect rect, string text, Color? accent = null)
     {
         Ensure();
-        DrawPanel(rect, true);
-        DrawSolid(new Rect(rect.x + 5f, rect.y + 5f, 5f, rect.height - 10f), accent ?? WaterBright);
-        GUI.Label(new Rect(rect.x + 16f, rect.y + 2f, rect.width - 24f, rect.height - 4f), text, Banner);
+        DrawOutlinedLabel(rect, text, OverlayTitleCentered, accent ?? Cream);
     }
 
     public static void DrawInteractionPrompt(Rect rect, string key, string label)
     {
         Ensure();
-        DrawPanel(rect, true);
-        Rect keyRect = new(rect.x + 10f, rect.y + 8f, 40f, rect.height - 16f);
-        GUI.Label(keyRect, key, Keycap);
-        GUI.Label(new Rect(rect.x + 60f, rect.y + 2f, rect.width - 70f, rect.height - 4f), label, BodyCentered);
+        const float keyWidth = 52f;
+        const float gap = 12f;
+        float labelWidth = Mathf.Min(OverlayBody.CalcSize(new GUIContent(label)).x + 8f,
+            rect.width - keyWidth - gap);
+        float contentWidth = keyWidth + gap + labelWidth;
+        float startX = rect.center.x - contentWidth * .5f;
+        Rect keyRect = new(startX, rect.y, keyWidth, rect.height);
+        DrawOutlinedLabel(keyRect, $"[{key}]", OverlayGold, AccentBright, thickness: 2f);
+        DrawOutlinedLabel(new Rect(keyRect.xMax + gap, rect.y, labelWidth, rect.height),
+            label, OverlayBody, Cream, thickness: 2f);
     }
 
     public static void DrawHudPanel(Rect rect, string caption, Color accent, bool emphasized = false)
@@ -261,11 +289,14 @@ public static class FishingUiTheme
     public static bool DrawShortcutButton(Rect rect, HudIcon icon, string key)
     {
         Ensure();
-        bool clicked = GUI.Button(rect, GUIContent.none, Button);
-        float iconSize = Mathf.Min(38f, rect.height - 14f);
-        DrawHudIcon(new Rect(rect.center.x - iconSize * .5f, rect.y + 6f, iconSize, iconSize), icon, AccentBright);
-        float keyWidth = key != null && key.Length > 1 ? 42f : 28f;
-        GUI.Label(new Rect(rect.center.x - keyWidth * .5f, rect.yMax - 22f, keyWidth, 18f), key, Keycap);
+        bool clicked = GUI.Button(rect, GUIContent.none, GUIStyle.none);
+        float iconSize = Mathf.Min(52f, rect.height - 25f);
+        DrawHudIcon(new Rect(rect.center.x - iconSize * .5f, rect.y + 2f, iconSize, iconSize), icon, Cream);
+        float keyWidth = key != null && key.Length > 1 ? 54f : 34f;
+        DrawOutlinedLabel(new Rect(rect.center.x - keyWidth * .5f, rect.yMax - 25f, keyWidth, 22f),
+            key, OverlaySmallCentered, AccentBright);
+        if (rect.Contains(Event.current.mousePosition))
+            DrawSolid(new Rect(rect.x + 8f, rect.yMax - 2f, rect.width - 16f, 2f), AccentBright);
         return clicked;
     }
 
@@ -286,7 +317,13 @@ public static class FishingUiTheme
         }
 
         float t = 3f;
-        if (icon == HudIcon.Bag)
+        if (icon == HudIcon.Coin)
+        {
+            DrawSolid(new Rect(rect.x + 3f, rect.y + 6f, rect.width - 6f, rect.height - 12f), Gold);
+            DrawSolid(new Rect(rect.x + 7f, rect.y + 3f, rect.width - 14f, rect.height - 6f), Gold);
+            DrawSolid(new Rect(rect.x + 9f, rect.y + 7f, rect.width - 18f, rect.height - 14f), new Color(.58f, .31f, .08f));
+        }
+        else if (icon == HudIcon.Bag)
         {
             DrawFlatOutline(new Rect(rect.x + 3f, rect.y + 8f, rect.width - 6f, rect.height - 11f), color, t);
             DrawFlatOutline(new Rect(rect.x + 9f, rect.y + 2f, rect.width - 18f, 10f), color, t);
@@ -415,6 +452,24 @@ public static class FishingUiTheme
         GUI.contentColor = color;
         GUI.Label(rect, text, style);
         GUI.contentColor = previous;
+    }
+
+    public static void DrawOutlinedLabel(Rect rect, string text, GUIStyle style, Color color,
+        Color? outline = null, float thickness = 2f)
+    {
+        Ensure();
+        Color edge = outline ?? HudOutline;
+        float d = Mathf.Max(1f, thickness);
+        ColoredLabel(new Rect(rect.x + 2f, rect.y + 3f, rect.width, rect.height), text, style, HudShadow);
+        ColoredLabel(new Rect(rect.x - d, rect.y - d, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x + d, rect.y - d, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x - d, rect.y + d, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x + d, rect.y + d, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x - d, rect.y, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x + d, rect.y, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x, rect.y - d, rect.width, rect.height), text, style, edge);
+        ColoredLabel(new Rect(rect.x, rect.y + d, rect.width, rect.height), text, style, edge);
+        ColoredLabel(rect, text, style, color);
     }
 
     public static void DrawFlatRect(Rect rect, Color color)
