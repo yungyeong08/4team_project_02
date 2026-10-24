@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 82810ac13a38b864f9f4f8399836a7d0, type: 3}
+  m_Name: PixelCharacterVisualConfig
+  m_EditorClassIdentifier: Assembly-CSharp::PixelCharacterVisualConfig
+  WalkLeft:
+  - {fileID: 5895540913150188443, guid: 3ff48531e51cbcc41b676163e213dd88, type: 3}
+  - {fileID: -9044273682636020802, guid: 23122eb11f7862e428718a5fa43bfd9d, type: 3}
+  - {fileID: -3605533826386893562, guid: d6f1e74c4bfe7ec43b532db0565b30e7, type: 3}
+  WalkRight:
+  - {fileID: -4345969612696422427, guid: db2d6757de6753745beb22e6337e8120, type: 3}
+  - {fileID: -2161276900132581064, guid: bf84c10676348c74ab5797fd6dd90662, type: 3}
+  - {fileID: 5430413387309060758, guid: a2c57cd58ec70524f9888e5c76971c49, type: 3}
+  FishingPose: {fileID: -3138507368751019899, guid: 6f99b7e938860e547b99974163b334fa, type: 3}

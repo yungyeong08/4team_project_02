@@ -36,6 +36,7 @@ public sealed class PixelMapBuilder : MonoBehaviour
     private void OnEnable()
     {
         if (!Application.isPlaying && transform.childCount == 0) Build();
+        else RefreshSceneReferences();
     }
 
     public void EnsureDecorations() => Build();
@@ -43,9 +44,7 @@ public sealed class PixelMapBuilder : MonoBehaviour
     public void Build()
     {
         ClearGeneratedChildren();
-        runtimeSpots.Clear();
-        if (Config.FishingSpots.Count > 0 && Config.FishingSpots[0] != null)
-            runtimeSpots.Add(Config.FishingSpots[0]);
+        RefreshFishingSpots();
 
         Transform groundRoot = CreateRoot("01 Ground and Paths");
         Transform waterRoot = CreateRoot("02 Water Areas");
@@ -57,6 +56,35 @@ public sealed class PixelMapBuilder : MonoBehaviour
         CreateDecorations(decorationRoot);
         CreateShops(gameplayRoot);
         CreateMapBounds(gameplayRoot);
+    }
+
+    /// <summary>
+    /// Reconnects gameplay references to the editable objects already saved in the scene.
+    /// This deliberately does not rebuild the hierarchy, so manual Scene-view changes survive Play Mode.
+    /// </summary>
+    public void RefreshSceneReferences()
+    {
+        RefreshFishingSpots();
+        FishingShop = FindChildByName("Fishing Shop");
+        FishMarket = FindChildByName("Fish Market");
+    }
+
+    private void RefreshFishingSpots()
+    {
+        runtimeSpots.Clear();
+        if (Config.FishingSpots.Count > 0 && Config.FishingSpots[0] != null)
+            runtimeSpots.Add(Config.FishingSpots[0]);
+    }
+
+    private Transform FindChildByName(string objectName)
+    {
+        Transform[] descendants = GetComponentsInChildren<Transform>(true);
+        for (int i = 0; i < descendants.Length; i++)
+        {
+            if (descendants[i] != transform && descendants[i].name == objectName)
+                return descendants[i];
+        }
+        return null;
     }
 
     public FishingSpotDefinition GetNearestFishingSpot(Vector2 playerPosition)
@@ -102,19 +130,28 @@ public sealed class PixelMapBuilder : MonoBehaviour
     private void CreateGroundAndPaths(Transform parent)
     {
         CreateRect(parent, "Grass Ground", Vector2.zero, Config.MapSize, groundColor, -10, false);
-        CreateRect(parent, "Village Road", new Vector2(3.5f, -2.5f), new Vector2(9f, 2.2f), pathColor, -8, false);
-        CreateRect(parent, "Beginner Pond Trail", new Vector2(-.2f, -.9f), new Vector2(7.2f, 1.7f), pathColor, -8, false);
-        CreateRect(parent, "Southern Entrance", new Vector2(4f, -6.4f), new Vector2(2.2f, 5.2f), pathColor, -8, false);
-        CreateRect(parent, "Village Square", new Vector2(4.5f, -2.5f), new Vector2(8.5f, 4.2f), new Color(.57f, .49f, .30f), -7, false);
-        CreateRect(parent, "Pond Approach", new Vector2(-.8f, 0f), new Vector2(1.8f, 3.4f), pathColor, -8, false);
+        CreateRect(parent, "Village Entrance Path", new Vector2(-9f, -5.7f), new Vector2(2f, 6.6f), pathColor, -8, false);
+        CreateRect(parent, "Beginner Pond Trail", new Vector2(-4.1f, -2.5f), new Vector2(11.8f, 1.6f), pathColor, -8, false);
+        CreateRect(parent, "Pond Approach", new Vector2(.55f, -.5f), new Vector2(1.7f, 5.5f), pathColor, -8, false);
+        CreateRect(parent, "Market Lane", new Vector2(3.75f, 1.2f), new Vector2(6.5f, 1.6f), pathColor, -8, false);
+        CreateRect(parent, "Market Square", new Vector2(7f, 1.2f), new Vector2(3.5f, 3.2f), new Color(.57f, .49f, .30f), -7, false);
+        CreateRect(parent, "Rod Shop Lane", new Vector2(7.4f, -2.1f), new Vector2(1.7f, 5.1f), pathColor, -8, false);
+        CreateRect(parent, "Rod Shop Apron", new Vector2(8f, -5.1f), new Vector2(3.5f, 2.3f), new Color(.57f, .49f, .30f), -7, false);
     }
 
     private void CreateFishingArea(Transform waterParent, Transform gameplayParent, FishingSpotDefinition spot, int index)
     {
         CreateRect(waterParent, spot.DisplayName + " Shore", spot.WaterCenter,
             spot.WaterSize + new Vector2(.55f, .55f), new Color(.78f, .72f, .45f), -7, false);
-        Color color = index == 2 ? deepWaterColor : waterColor;
-        CreateRect(waterParent, spot.DisplayName, spot.WaterCenter, spot.WaterSize, color, -6, true);
+        if (!CreateWaterTileGrid(waterParent, spot.DisplayName, spot.WaterCenter, spot.WaterSize, -6))
+        {
+            Color color = index == 2 ? deepWaterColor : waterColor;
+            CreateRect(waterParent, spot.DisplayName, spot.WaterCenter, spot.WaterSize, color, -6, true);
+        }
+        else
+        {
+            CreateInvisibleCollider(waterParent, spot.DisplayName + " Water Blocker", spot.WaterCenter, spot.WaterSize);
+        }
 
         Vector2 dockDirection = (spot.BobberPosition - spot.ShorePosition).normalized;
         bool horizontal = Mathf.Abs(dockDirection.x) > Mathf.Abs(dockDirection.y);
@@ -133,27 +170,34 @@ public sealed class PixelMapBuilder : MonoBehaviour
     {
         Texture2D treeTexture = Resources.Load<Texture2D>("Sprites/Environment/Tree1");
         Texture2D grassTexture = Resources.Load<Texture2D>("Sprites/Environment/grass1");
+        Texture2D flowerTexture = Resources.Load<Texture2D>("Sprites/Environment/flower");
         if (treeTexture != null) treeTexture.filterMode = FilterMode.Point;
         if (grassTexture != null) grassTexture.filterMode = FilterMode.Point;
+        if (flowerTexture != null) flowerTexture.filterMode = FilterMode.Point;
 
         Vector2[] treePositions =
         {
-            new(-11f,-8f), new(-8f,-8f), new(-4f,-8f), new(8f,-8f), new(11f,-8f),
-            new(-11f,-4f), new(-10.5f,1f), new(-11f,6f), new(-8f,8f), new(-2f,7.5f),
-            new(3f,7f), new(7f,8f), new(11f,6f), new(10.5f,2f), new(11f,-3f),
-            new(-8.5f,4.5f), new(7.5f,4.5f)
+            new(-11f,-8f), new(-11f,-4.5f), new(-11f,0f), new(-10.5f,5f),
+            new(-8f,7.5f), new(-4.5f,7.7f), new(-.8f,7.5f), new(3f,7.7f), new(7f,7.5f),
+            new(10.8f,6f), new(11f,2f), new(11f,-2f), new(11f,-6.5f),
+            new(8f,-8f), new(3f,-7.8f), new(-3f,-7.8f), new(-7f,-8.2f)
         };
         if (treeTexture != null)
             foreach (Vector2 position in treePositions) CreateSpriteDecoration(parent, "Tree", treeTexture, position, 32f, 2, true);
 
         Vector2[] grassPositions =
         {
-            new(-9f,-6f), new(-6f,-7f), new(-1f,-6f), new(8f,-6f), new(10f,-5f),
-            new(-9f,6f), new(-3f,6f), new(2f,5f), new(6f,6f), new(9f,4f),
-            new(9f,0f), new(1f,1.5f), new(-1f,3f), new(2f,-4.5f)
+            new(-8f,4f), new(-7.2f,5f), new(-5.8f,5.5f), new(-1.5f,5.3f), new(0f,4.8f),
+            new(4f,4.8f), new(5f,5.2f), new(9f,4.5f),
+            new(-8f,-4.5f), new(-7f,-5f), new(-4.5f,-5.2f),
+            new(2.5f,-4.8f), new(3f,-5.5f), new(5f,-6.8f), new(10f,-3.5f), new(9f,-1f)
         };
         if (grassTexture != null)
             foreach (Vector2 position in grassPositions) CreateSpriteDecoration(parent, "Grass", grassTexture, position, 32f, -1, false);
+
+        if (flowerTexture != null && Config.FlowerPositions != null)
+            foreach (Vector2 position in Config.FlowerPositions)
+                CreateSpriteDecoration(parent, "Flower Patch", flowerTexture, position, 32f, 0, false);
     }
 
     private void CreateShops(Transform parent)
@@ -166,7 +210,58 @@ public sealed class PixelMapBuilder : MonoBehaviour
         }
         else FishingShop = CreateRect(parent, "Fishing Shop", Config.FishingShopPosition, new Vector2(2f, 1.4f), new Color(.25f, .55f, .86f), 2, true).transform;
 
-        FishMarket = CreateRect(parent, "Fish Market", Config.FishMarketPosition, new Vector2(2.1f, 1.45f), new Color(.78f, .34f, .18f), 2, true).transform;
+        Texture2D marketTexture = Resources.Load<Texture2D>("Sprites/Environment/fishshop");
+        if (marketTexture != null)
+        {
+            marketTexture.filterMode = FilterMode.Point;
+            FishMarket = CreateSpriteDecoration(parent, "Fish Market", marketTexture, Config.FishMarketPosition,
+                32f, 2, true, new Vector2(1.7f, .5f), new Vector2(0f, .25f)).transform;
+        }
+        else FishMarket = CreateRect(parent, "Fish Market", Config.FishMarketPosition, new Vector2(2.1f, 1.45f), new Color(.78f, .34f, .18f), 2, true).transform;
+    }
+
+    private bool CreateWaterTileGrid(Transform parent, string areaName, Vector2 center, Vector2 size, int sortingOrder)
+    {
+        FishingWaterTileSet tiles = Config.WaterTiles;
+        if (tiles == null || !tiles.IsComplete) return false;
+
+        int columns = Mathf.Max(3, Mathf.RoundToInt(size.x));
+        int rows = Mathf.Max(3, Mathf.RoundToInt(size.y));
+        float tileWidth = size.x / columns;
+        float tileHeight = size.y / rows;
+        float pixelsPerUnit = Mathf.Max(1f, Config.WaterTilePixelsPerUnit);
+        float left = center.x - size.x * .5f;
+        float bottom = center.y - size.y * .5f;
+        var spriteCache = new Dictionary<Texture2D, Sprite>();
+
+        for (int row = 0; row < rows; row++)
+        {
+            for (int column = 0; column < columns; column++)
+            {
+                Texture2D texture = tiles.GetTile(column, row, columns, rows);
+                if (!spriteCache.TryGetValue(texture, out Sprite sprite))
+                {
+                    texture.filterMode = FilterMode.Point;
+                    texture.wrapMode = TextureWrapMode.Clamp;
+                    sprite = Sprite.Create(texture, new Rect(0f, 0f, texture.width, texture.height),
+                        new Vector2(.5f, .5f), pixelsPerUnit);
+                    sprite.name = texture.name + " Runtime Tile";
+                    spriteCache.Add(texture, sprite);
+                }
+
+                var tile = new GameObject($"{areaName} Tile {column},{row}");
+                tile.transform.SetParent(parent, false);
+                tile.transform.position = new Vector3(left + (column + .5f) * tileWidth,
+                    bottom + (row + .5f) * tileHeight, 0f);
+                float spriteWidth = texture.width / pixelsPerUnit;
+                float spriteHeight = texture.height / pixelsPerUnit;
+                tile.transform.localScale = new Vector3(tileWidth / spriteWidth, tileHeight / spriteHeight, 1f);
+                var renderer = tile.AddComponent<SpriteRenderer>();
+                renderer.sprite = sprite;
+                renderer.sortingOrder = sortingOrder;
+            }
+        }
+        return true;
     }
 
     private void CreateMapBounds(Transform parent)
@@ -193,7 +288,9 @@ public sealed class PixelMapBuilder : MonoBehaviour
         return rectangle;
     }
 
-    private static GameObject CreateSpriteDecoration(Transform parent, string objectName, Texture2D texture, Vector2 position, float pixelsPerUnit, int sortingOrder, bool blocksPlayer)
+    private static GameObject CreateSpriteDecoration(Transform parent, string objectName, Texture2D texture,
+        Vector2 position, float pixelsPerUnit, int sortingOrder, bool blocksPlayer,
+        Vector2? colliderSize = null, Vector2? colliderOffset = null)
     {
         var decoration = new GameObject(objectName);
         decoration.transform.SetParent(parent, false);
@@ -204,8 +301,8 @@ public sealed class PixelMapBuilder : MonoBehaviour
         if (blocksPlayer)
         {
             var collider = decoration.AddComponent<BoxCollider2D>();
-            collider.size = new Vector2(.65f, .42f);
-            collider.offset = new Vector2(0f, .21f);
+            collider.size = colliderSize ?? new Vector2(.65f, .42f);
+            collider.offset = colliderOffset ?? new Vector2(0f, .21f);
         }
         return decoration;
     }

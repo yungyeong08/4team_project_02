@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b3215c3455514f7e9c7a283d9e33a3f6, type: 3}
   m_Name: EarlyGameQuestConfig
   m_EditorClassIdentifier: Assembly-CSharp::EarlyGameQuestConfig
+  QuestIcon: {fileID: 2800000, guid: 713762731c74c1b41b428cb046bdf08a, type: 3}
   Quests:
   - Id: first_catch
     Title: "\uCCAB \uB09A\uC2DC"

@@ -16,14 +16,17 @@ MonoBehaviour:
     SoundEffectsEnabled: 1
     FishCatchSfx: {fileID: 0}
     NewFishSfx: {fileID: 0}
-    FootstepGrass: {fileID: 0}
+    FootstepGrassClips:
+    - {fileID: 8300000, guid: a0a3868129f79164da93e2e3f61683f3, type: 3}
+    - {fileID: 8300000, guid: ba5fa0f5269d10b4c9c3e5d447000743, type: 3}
+    - {fileID: 8300000, guid: ed8f659c2871f5a47995363cef695cf1, type: 3}
     FishingCast: {fileID: 0}
     WaterSplash: {fileID: 0}
     FishBite: {fileID: 0}
-    FishingReel: {fileID: 8300000, guid: fe57df0b6e809644bab8640d7c1f8aa6, type: 3}
+    FishingReel: {fileID: 8300000, guid: 08ab422d55b35a54a9c0d1c49f505754, type: 3}
     Sell: {fileID: 8300000, guid: 39ef86ca251c939469e072cac8fc5c71, type: 3}
     SellAll: {fileID: 8300000, guid: b33907b8bb42ec84bbf7417ab5570635, type: 3}
-    Purchase: {fileID: 0}
+    Purchase: {fileID: 8300000, guid: 5ab905aa3517ad447b6f96f7cd17e803, type: 3}
     DebtRepay: {fileID: 0}
     QuestComplete: {fileID: 0}
     UiClick: {fileID: 8300000, guid: 5ae71e97118aa714da3487328d475786, type: 3}
@@ -34,7 +37,10 @@ MonoBehaviour:
     BiteVolume: 0.78
     ActionVolume: 0.55
     RewardVolume: 0.6
-    FootstepVolume: 0.2
+    FootstepVolume: 0.16
+    FootstepInterval: 0.42
+    FootstepPitchMin: 0.97
+    FootstepPitchMax: 1.03
     UiVolume: 0.18
     MenuVolume: 0.28
     ReelVolume: 0.38

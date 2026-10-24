@@ -5,6 +5,10 @@ using UnityEngine;
 [CreateAssetMenu(fileName = "EarlyGameQuestConfig", menuName = "Fishing/Early Game Quest Config")]
 public sealed class EarlyGameQuestConfig : ScriptableObject
 {
+    [Header("HUD Art")]
+    public Texture2D QuestIcon;
+
+    [Header("Quest Line")]
     public List<EarlyQuestDefinition> Quests = new();
 
     public void ApplyDefaults()

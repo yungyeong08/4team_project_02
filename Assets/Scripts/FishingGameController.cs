@@ -82,8 +82,16 @@ public sealed class FishingGameController : MonoBehaviour
     {
         if (initialized || !Application.isPlaying) return;
         FishingUiTheme.Configure(hudSettings);
-        // Clear the temporary Scene-view objects created by the earlier prototype.
-        for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
+        // Keep the editable map preview. It is now the real gameplay map, so Scene-view edits
+        // must survive when entering Play Mode. Remove only unrelated legacy preview children.
+        PixelMapBuilder sceneMap = GetComponentInChildren<PixelMapBuilder>(true);
+        for (int i = transform.childCount - 1; i >= 0; i--)
+        {
+            Transform child = transform.GetChild(i);
+            bool containsSceneMap = sceneMap != null &&
+                                    (child == sceneMap.transform || sceneMap.transform.IsChildOf(child));
+            if (!containsSceneMap) Destroy(child.gameObject);
+        }
         balanceConfig = FishingBalanceConfig.LoadOrCreateRuntimeDefault();
         fishCatalog = balanceConfig.Fish;
         rodCatalog = balanceConfig.Rods;
@@ -95,7 +103,6 @@ public sealed class FishingGameController : MonoBehaviour
     {
         // Clean up only runtime objects created by this prototype before making a fresh test session.
         foreach (var oldPlayer in Object.FindObjectsByType<PixelCharacter>(FindObjectsSortMode.None)) Destroy(oldPlayer.gameObject);
-        foreach (var oldMap in GetComponents<PixelMapBuilder>()) Destroy(oldMap);
         gameCamera = Camera.main;
         if (gameCamera == null)
         {
@@ -114,8 +121,19 @@ public sealed class FishingGameController : MonoBehaviour
         gameCamera.transform.position = new Vector3(0, 0, -10);
         gameCamera.backgroundColor = new Color(.35f, .60f, .24f);
 
-        map = gameObject.AddComponent<PixelMapBuilder>();
-        map.Build();
+        map = GetComponentInChildren<PixelMapBuilder>(true);
+        if (map == null)
+        {
+            var mapObject = new GameObject("Editable Map");
+            mapObject.transform.SetParent(transform, false);
+            map = mapObject.AddComponent<PixelMapBuilder>();
+            map.Build();
+        }
+        else
+        {
+            map.gameObject.SetActive(true);
+            map.RefreshSceneReferences();
+        }
 
         var player = new GameObject("Player (Pixel Crawler)");
         player.transform.position = map.PlayerStart;
@@ -217,12 +235,24 @@ public sealed class FishingGameController : MonoBehaviour
             }
         }
 
-        if (IsCinematicActive) return;
+        if (IsCinematicActive)
+        {
+            character?.StopMovement();
+            return;
+        }
 
         if (state == State.Explore)
         {
-            if (progressUI != null && progressUI.IsBlockingGameplay) return;
-            if ((shopSystem != null && shopSystem.IsOpen) || (fishMarketSystem != null && fishMarketSystem.IsOpen)) return;
+            if (progressUI != null && progressUI.IsBlockingGameplay)
+            {
+                character?.StopMovement();
+                return;
+            }
+            if ((shopSystem != null && shopSystem.IsOpen) || (fishMarketSystem != null && fishMarketSystem.IsOpen))
+            {
+                character?.StopMovement();
+                return;
+            }
             if (character != null) character.Move();
             if (shopSystem != null && shopSystem.IsPlayerInRange)
             {
@@ -294,6 +324,7 @@ public sealed class FishingGameController : MonoBehaviour
             return;
         }
         state = State.Reeling;
+        character?.SetReeling(true);
         reelUiReveal = 0f;
         currentFish = activeFishingSpot != null ? activeFishingSpot.SelectFish(fishCatalog) : fishCatalog[Random.Range(0, fishCatalog.Count)];
         if (currentFish == null)

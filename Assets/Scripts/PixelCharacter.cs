@@ -4,12 +4,19 @@ using UnityEngine;
 public sealed class PixelCharacter : MonoBehaviour
 {
     private SpriteRenderer spriteRenderer;
+    private Transform visualTransform;
     private Sprite[] walkDown;
     private Sprite[] walkUp;
-    private Sprite[] fishingFrames;
+    private Sprite[] walkLeft;
+    private Sprite[] walkRight;
+    private Sprite fishingPose;
     private float frameTime;
     private bool isFishing;
+    private bool isReeling;
     private bool facingUp;
+    private bool facingLeft;
+    private bool facingHorizontal;
+    private Vector3 visualOrigin;
     private bool isMoving;
     private bool isRunning;
     public float speed = 2.2f;
@@ -21,8 +28,15 @@ public sealed class PixelCharacter : MonoBehaviour
 
     public void Setup()
     {
-        spriteRenderer = GetComponent<SpriteRenderer>();
-        if (spriteRenderer == null) spriteRenderer = gameObject.AddComponent<SpriteRenderer>();
+        visualTransform = transform.Find("Visual");
+        if (visualTransform == null)
+        {
+            var visualObject = new GameObject("Visual");
+            visualTransform = visualObject.transform;
+            visualTransform.SetParent(transform, false);
+        }
+        spriteRenderer = visualTransform.GetComponent<SpriteRenderer>();
+        if (spriteRenderer == null) spriteRenderer = visualTransform.gameObject.AddComponent<SpriteRenderer>();
         spriteRenderer.sortingOrder = 3;
         var collider = GetComponent<CircleCollider2D>();
         if (collider == null) collider = gameObject.AddComponent<CircleCollider2D>();
@@ -36,9 +50,14 @@ public sealed class PixelCharacter : MonoBehaviour
             LoadCharacterSprite("Sprites/Player/MainCharacter/Player4", true),
             LoadCharacterSprite("Sprites/Player/MainCharacter/Player5", true),
             LoadCharacterSprite("Sprites/Player/MainCharacter/Player6", true));
-        fishingFrames = CreateSheetFrames(Resources.Load<Texture2D>("Sprites/Player/FishingDown"), 48f);
+
+        PixelCharacterVisualConfig visualConfig = PixelCharacterVisualConfig.Load();
+        walkLeft = CreateWalkCycle(visualConfig != null ? visualConfig.WalkLeft : null);
+        walkRight = CreateWalkCycle(visualConfig != null ? visualConfig.WalkRight : null);
+        fishingPose = NormalizeSprite(visualConfig != null ? visualConfig.FishingPose : null);
 
         SetFrame(walkDown, 0);
+        visualOrigin = Vector3.zero;
     }
 
     public void Move()
@@ -56,24 +75,52 @@ public sealed class PixelCharacter : MonoBehaviour
             if (collisionBuffer[i] != null && collisionBuffer[i].gameObject != gameObject) { blocked = true; break; }
         if (!blocked) transform.position = nextPosition;
 
-        if (movement.y > .01f) facingUp = true;
-        else if (movement.y < -.01f) facingUp = false;
+        if (Mathf.Abs(movement.x) > Mathf.Abs(movement.y) && Mathf.Abs(movement.x) > .01f)
+        {
+            facingHorizontal = true;
+            facingLeft = movement.x < 0f;
+        }
+        else if (Mathf.Abs(movement.y) > .01f)
+        {
+            facingHorizontal = false;
+            facingUp = movement.y > 0f;
+        }
 
         frameTime += Time.deltaTime;
         isMoving = movement.sqrMagnitude > .01f && !blocked;
-        SetFrame(facingUp ? walkUp : walkDown, isMoving ? Mathf.FloorToInt(frameTime * 7f) : 0);
-        if (Mathf.Abs(movement.x) > .01f) spriteRenderer.flipX = movement.x < 0;
-        else spriteRenderer.flipX = false;
+        int frame = isMoving ? Mathf.FloorToInt(frameTime * 7f) : 0;
+        if (facingHorizontal && HasFrames(facingLeft ? walkLeft : walkRight))
+            SetFrame(facingLeft ? walkLeft : walkRight, frame);
+        else
+            SetFrame(facingUp ? walkUp : walkDown, frame);
+        spriteRenderer.flipX = false;
     }
 
     public void SetFishing(bool value)
     {
         isFishing = value;
+        isReeling = false;
         isMoving = false;
         isRunning = false;
         frameTime = 0;
-        if (value) SetFrame(fishingFrames, 0);
-        else SetFrame(facingUp ? walkUp : walkDown, 0);
+        visualTransform.localPosition = visualOrigin;
+        visualTransform.localRotation = Quaternion.identity;
+        if (value && fishingPose != null) spriteRenderer.sprite = fishingPose;
+        else SetIdleFrame();
+    }
+
+    public void StopMovement()
+    {
+        isMoving = false;
+        isRunning = false;
+        frameTime = 0f;
+        if (!isFishing) SetIdleFrame();
+    }
+
+    public void SetReeling(bool value)
+    {
+        isReeling = isFishing && value;
+        frameTime = 0f;
     }
 
     public void SetVisible(bool visible)
@@ -90,7 +137,21 @@ public sealed class PixelCharacter : MonoBehaviour
     {
         if (!isFishing || spriteRenderer == null) return;
         frameTime += Time.deltaTime;
-        SetFrame(fishingFrames, Mathf.FloorToInt(frameTime * 7f));
+        if (fishingPose != null) spriteRenderer.sprite = fishingPose;
+
+        // The supplied fishing art is a single pose. A restrained tug motion makes the
+        // reeling phase readable without inventing extra frames or moving the collider.
+        if (isReeling)
+        {
+            float tug = Mathf.Sin(frameTime * 12f);
+            visualTransform.localPosition = visualOrigin + Vector3.up * (tug > .25f ? .025f : 0f);
+            visualTransform.localRotation = Quaternion.Euler(0f, 0f, tug * .7f);
+        }
+        else
+        {
+            visualTransform.localPosition = visualOrigin;
+            visualTransform.localRotation = Quaternion.identity;
+        }
     }
 
     private static Sprite LoadCharacterSprite(string resourcePath, bool removeWhiteBackground = false)
@@ -174,15 +235,32 @@ public sealed class PixelCharacter : MonoBehaviour
         return new[] { first, second, third, second };
     }
 
-    private static Sprite[] CreateSheetFrames(Texture2D source, float pixelsPerUnit)
+    private static Sprite[] CreateWalkCycle(Sprite[] source)
     {
-        if (source == null) return new Sprite[0];
-        source.filterMode = FilterMode.Point;
-        int count = source.width / 64;
-        var frames = new Sprite[count];
-        for (int i = 0; i < count; i++)
-            frames[i] = Sprite.Create(source, new Rect(i * 64, 0, 64, 64), new Vector2(.5f, .1f), pixelsPerUnit);
-        return frames;
+        if (source == null || source.Length < 3) return new Sprite[0];
+        Sprite first = NormalizeSprite(source[0]);
+        Sprite second = NormalizeSprite(source[1]);
+        Sprite third = NormalizeSprite(source[2]);
+        return CreateWalkCycle(first, second, third);
+    }
+
+    private static Sprite NormalizeSprite(Sprite source)
+    {
+        if (source == null || source.texture == null) return null;
+        source.texture.filterMode = FilterMode.Point;
+        Sprite normalized = Sprite.Create(source.texture, source.rect, new Vector2(.5f, .1f), 48f);
+        normalized.name = source.name;
+        return normalized;
+    }
+
+    private static bool HasFrames(Sprite[] frames) => frames != null && frames.Length > 0;
+
+    private void SetIdleFrame()
+    {
+        if (facingHorizontal && HasFrames(facingLeft ? walkLeft : walkRight))
+            SetFrame(facingLeft ? walkLeft : walkRight, 0);
+        else
+            SetFrame(facingUp ? walkUp : walkDown, 0);
     }
 
     private void SetFrame(Sprite[] frames, int frame)

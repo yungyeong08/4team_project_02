@@ -178,47 +178,46 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
         FishingHudSettings hud = FishingUiTheme.Settings;
         FishingRodDefinition equipped = rodInventory?.GetEquipped(rodCatalog);
-        float sideWidth = Mathf.Min(hud.SidePanelWidth, (screenWidth - hud.ScreenMargin * 4f) * .25f);
-        var statusPanel = new Rect(hud.ScreenMargin, hud.ScreenMargin, sideWidth, hud.TopPanelHeight);
+        float sideWidth = Mathf.Min(286f, (screenWidth - hud.ScreenMargin * 4f) * .25f);
+        var statusPanel = new Rect(hud.ScreenMargin, hud.ScreenMargin, sideWidth, 82f);
         Color rodColor = equipped != null ? equipped.RarityColor : FishingUiTheme.Muted;
-        FishingUiTheme.DrawHudPanel(statusPanel, "플레이어 상태", rodColor);
-        FishingUiTheme.DrawMoneyChip(new Rect(statusPanel.x + 16f, statusPanel.y + 28f, 170f, 34f),
+        FishingUiTheme.DrawHudPanel(statusPanel, "", rodColor);
+        FishingUiTheme.DrawMoneyChip(new Rect(statusPanel.x + 14f, statusPanel.y + 11f, 154f, 30f),
             wallet != null ? wallet.Balance : 0);
         if (balanceFeedbackTimer > 0f && balanceDelta != 0)
         {
             float alpha = Mathf.Clamp01(balanceFeedbackTimer * 2f);
             Color color = balanceDelta > 0 ? FishingUiTheme.Gold : FishingUiTheme.Danger;
             color.a *= alpha;
-            FishingUiTheme.ColoredLabel(new Rect(statusPanel.x + 190f, statusPanel.y + 31f, statusPanel.width - 202f, 28f),
+            FishingUiTheme.ColoredLabel(new Rect(statusPanel.x + 174f, statusPanel.y + 12f, statusPanel.width - 184f, 28f),
                 $"{(balanceDelta > 0 ? "+" : "")}{balanceDelta:N0} G", FishingUiTheme.Heading, color);
         }
 
-        var rodChip = new Rect(statusPanel.x + 16f, statusPanel.y + 70f, statusPanel.width - 32f, 34f);
+        var rodChip = new Rect(statusPanel.x + 14f, statusPanel.y + 45f, statusPanel.width - 28f, 28f);
         FishingUiTheme.DrawCard(rodChip, true);
-        FishingUiTheme.DrawHudIcon(new Rect(rodChip.x + 8f, rodChip.y + 5f, 24f, 24f), FishingUiTheme.HudIcon.Rod, rodColor);
-        GUI.Label(new Rect(rodChip.x + 42f, rodChip.y, 78f, rodChip.height), "장착", FishingUiTheme.SmallCentered);
-        FishingUiTheme.ColoredLabel(new Rect(rodChip.x + 112f, rodChip.y, rodChip.width - 122f, rodChip.height),
+        FishingUiTheme.DrawHudIcon(new Rect(rodChip.x + 7f, rodChip.y + 3f, 22f, 22f), FishingUiTheme.HudIcon.Rod, rodColor);
+        FishingUiTheme.ColoredLabel(new Rect(rodChip.x + 38f, rodChip.y, rodChip.width - 48f, rodChip.height),
             equipped != null ? equipped.DisplayName : "낚싯대 없음", FishingUiTheme.Body, rodColor);
 
-        float buttonWidth = hud.MenuButtonWidth;
-        float buttonHeight = hud.MenuButtonHeight;
-        float gap = 10f;
+        const float buttonWidth = 64f;
+        const float buttonHeight = 66f;
+        const float gap = 8f;
         float menuY = screenHeight - hud.ScreenMargin - buttonHeight;
         float menuX = hud.ScreenMargin;
-        if (FishingUiTheme.DrawMenuButton(new Rect(menuX, menuY, buttonWidth, buttonHeight),
-                FishingUiTheme.HudIcon.Bag, "가방", "I"))
+        if (FishingUiTheme.DrawShortcutButton(new Rect(menuX, menuY, buttonWidth, buttonHeight),
+                FishingUiTheme.HudIcon.Bag, "I"))
         {
             audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Inventory);
         }
-        if (FishingUiTheme.DrawMenuButton(new Rect(menuX + buttonWidth + gap, menuY, buttonWidth, buttonHeight),
-                FishingUiTheme.HudIcon.Book, "도감", "C"))
+        if (FishingUiTheme.DrawShortcutButton(new Rect(menuX + buttonWidth + gap, menuY, buttonWidth, buttonHeight),
+                FishingUiTheme.HudIcon.Book, "C"))
         {
             audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Codex);
         }
-        if (FishingUiTheme.DrawMenuButton(new Rect(menuX + (buttonWidth + gap) * 2f, menuY, buttonWidth, buttonHeight),
-                FishingUiTheme.HudIcon.Menu, "메뉴", "ESC"))
+        if (FishingUiTheme.DrawShortcutButton(new Rect(menuX + (buttonWidth + gap) * 2f, menuY, buttonWidth, buttonHeight),
+                FishingUiTheme.HudIcon.Menu, "ESC"))
         {
             audioDirector?.PlayUiClick();
             OpenWindow(WindowMode.Pause);

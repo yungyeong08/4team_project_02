@@ -22,7 +22,8 @@ public sealed class FishingAudioSettings
     public AudioClip NewFishSfx;
 
     [Header("World and fishing clips")]
-    public AudioClip FootstepGrass;
+    [Tooltip("잔디에서 실제로 이동할 때 무작위로 재생할 발걸음입니다.")]
+    public AudioClip[] FootstepGrassClips = new AudioClip[3];
     public AudioClip FishingCast;
     public AudioClip WaterSplash;
     public AudioClip FishBite;
@@ -48,6 +49,9 @@ public sealed class FishingAudioSettings
     [Range(0f, 1f)] public float ActionVolume = .68f;
     [Range(0f, 1f)] public float RewardVolume = .72f;
     [Range(0f, 1f)] public float FootstepVolume = .72f;
+    [Range(.25f, .7f)] public float FootstepInterval = .42f;
+    [Range(.8f, 1f)] public float FootstepPitchMin = .97f;
+    [Range(1f, 1.2f)] public float FootstepPitchMax = 1.03f;
     [Range(0f, 1f)] public float UiVolume = .50f;
     [Range(0f, 1f)] public float MenuVolume = .30f;
     [Range(0f, 1f)] public float ReelVolume = .78f;
@@ -62,15 +66,20 @@ public sealed class FishingAudioDirector : MonoBehaviour
     private AudioSource source;
     private AudioSource uiSource;
     private AudioSource reelSource;
+    private AudioSource footstepSource;
+    private PixelCharacter player;
     private FishingAudioSettings settings;
     private Coroutine catchSequence;
     private Coroutine questSequence;
     private bool reelRequested;
+    private float footstepTimer;
+    private int lastFootstepIndex = -1;
 
     public FishingSurfaceType CurrentSurface { get; set; } = FishingSurfaceType.Grass;
 
     public void Setup(PixelCharacter playerCharacter, FishingAudioSettings audioSettings)
     {
+        player = playerCharacter;
         settings = audioSettings ?? new FishingAudioSettings();
         if (!settings.SoundEffectsEnabled) return;
 
@@ -78,6 +87,14 @@ public sealed class FishingAudioDirector : MonoBehaviour
         source.playOnAwake = false;
         source.spatialBlend = 0f;
         source.volume = 1f;
+
+        if (settings.FootstepGrassClips != null && settings.FootstepGrassClips.Length > 0)
+        {
+            footstepSource = gameObject.AddComponent<AudioSource>();
+            footstepSource.playOnAwake = false;
+            footstepSource.spatialBlend = 0f;
+            footstepSource.volume = 1f;
+        }
 
         if (settings.UiClick != null || settings.MenuOpen != null || settings.MenuClose != null)
         {
@@ -101,6 +118,7 @@ public sealed class FishingAudioDirector : MonoBehaviour
 
     private void Update()
     {
+        UpdateFootsteps();
         if (reelSource == null) return;
 
         float targetVolume = reelRequested && CanPlay ? Mathf.Clamp01(settings.ReelVolume) : 0f;
@@ -115,8 +133,42 @@ public sealed class FishingAudioDirector : MonoBehaviour
         }
     }
 
-    // Footsteps remain disabled. Reeling uses one continuously looping source instead of
-    // replaying short one-shots, so the whole minigame has one continuous tension sound.
+    private void UpdateFootsteps()
+    {
+        bool walkingOnGrass = CanPlay && footstepSource != null && player != null && player.isActiveAndEnabled &&
+                              player.IsMoving && !player.IsFishing && CurrentSurface == FishingSurfaceType.Grass;
+        if (!walkingOnGrass)
+        {
+            footstepTimer = 0f;
+            if (footstepSource != null && footstepSource.isPlaying) footstepSource.Stop();
+            return;
+        }
+
+        footstepTimer -= Time.deltaTime;
+        if (footstepTimer > 0f) return;
+
+        AudioClip[] clips = settings.FootstepGrassClips;
+        int availableCount = 0;
+        for (int i = 0; i < clips.Length; i++)
+            if (clips[i] != null) availableCount++;
+        if (availableCount == 0) return;
+
+        int selected = Random.Range(0, clips.Length);
+        for (int attempt = 0; attempt < clips.Length * 2 &&
+             (clips[selected] == null || (availableCount > 1 && selected == lastFootstepIndex)); attempt++)
+            selected = (selected + 1) % clips.Length;
+        if (clips[selected] == null) return;
+
+        footstepSource.Stop();
+        footstepSource.pitch = Random.Range(settings.FootstepPitchMin, settings.FootstepPitchMax);
+        footstepSource.PlayOneShot(clips[selected], Mathf.Clamp01(settings.FootstepVolume));
+        lastFootstepIndex = selected;
+        float paceMultiplier = player.IsRunning ? .76f : 1f;
+        footstepTimer = Mathf.Max(.1f, settings.FootstepInterval * paceMultiplier);
+    }
+
+    // Reeling uses one continuously looping source instead of replaying short one-shots,
+    // so the whole minigame has one continuous tension sound.
     public void PlayCast() => PlayPrimary(settings?.FishingCast, settings?.ActionVolume ?? 0f);
     public void PlaySplash() => PlayPrimary(settings?.WaterSplash, (settings?.ActionVolume ?? 0f) * .9f);
     public void PlayBite() => PlayPrimary(settings?.FishBite, settings?.BiteVolume ?? 0f);
@@ -221,7 +273,15 @@ public sealed class FishingAudioDirector : MonoBehaviour
         uiSource.PlayOneShot(clip, Mathf.Clamp01(volume));
     }
 
-    private void OnDisable() => StopReel(true);
+    private void OnDisable()
+    {
+        StopReel(true);
+        if (footstepSource != null) footstepSource.Stop();
+    }
 
-    private void OnDestroy() => StopReel(true);
+    private void OnDestroy()
+    {
+        StopReel(true);
+        if (footstepSource != null) footstepSource.Stop();
+    }
 }

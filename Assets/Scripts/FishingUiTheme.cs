@@ -258,6 +258,17 @@ public static class FishingUiTheme
         return clicked;
     }
 
+    public static bool DrawShortcutButton(Rect rect, HudIcon icon, string key)
+    {
+        Ensure();
+        bool clicked = GUI.Button(rect, GUIContent.none, Button);
+        float iconSize = Mathf.Min(38f, rect.height - 14f);
+        DrawHudIcon(new Rect(rect.center.x - iconSize * .5f, rect.y + 6f, iconSize, iconSize), icon, AccentBright);
+        float keyWidth = key != null && key.Length > 1 ? 42f : 28f;
+        GUI.Label(new Rect(rect.center.x - keyWidth * .5f, rect.yMax - 22f, keyWidth, 18f), key, Keycap);
+        return clicked;
+    }
+
     public static void DrawHudIcon(Rect rect, HudIcon icon, Color color)
     {
         Ensure();

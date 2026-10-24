@@ -13,16 +13,16 @@ MonoBehaviour:
   m_Name: FishingMapConfig
   m_EditorClassIdentifier: Assembly-CSharp::FishingMapConfig
   MapSize: {x: 24, y: 18}
-  PlayerStart: {x: 4, y: -6}
-  FishingShopPosition: {x: 7, y: -2.5}
-  FishMarketPosition: {x: 3.5, y: -2.5}
+  PlayerStart: {x: -9, y: -7}
+  FishingShopPosition: {x: 8, y: -5.2}
+  FishMarketPosition: {x: 7, y: 1.5}
   FishingSpots:
   - Id: village_pond
     DisplayName: "\uB9C8\uC744 \uC5F0\uBABB \xB7 \uCD08\uAE09"
-    WaterCenter: {x: -5.5, y: 0}
-    WaterSize: {x: 8, y: 6}
-    ShorePosition: {x: -1.15, y: 0}
-    BobberPosition: {x: -2.25, y: 0}
+    WaterCenter: {x: -3.5, y: 1.6}
+    WaterSize: {x: 7, y: 5.5}
+    ShorePosition: {x: 0.45, y: -0.3}
+    BobberPosition: {x: -0.4, y: -0.3}
     InteractionRange: 1.65
     DifficultyMultiplier: 0.9
     RarityWeights:
@@ -74,3 +74,27 @@ MonoBehaviour:
       Weight: 38
     - Rarity: 4
       Weight: 7
+  WaterTiles:
+    UpLeft: {fileID: 2800000, guid: aab673a2089679240a05d2499d2b8652, type: 3}
+    UpMiddle: {fileID: 2800000, guid: a1a0344ef6fdc7345bb7d2316261c151, type: 3}
+    UpRight: {fileID: 2800000, guid: 801406bf04193b54196103d11b351cb0, type: 3}
+    LeftMiddle: {fileID: 2800000, guid: 57a58167fc851324381eed15d909ef59, type: 3}
+    Middle: {fileID: 2800000, guid: 829bdce249c08184c82819d4bc23af60, type: 3}
+    RightMiddle: {fileID: 2800000, guid: ffb48099520038d469c55bc5ad21e6cb, type: 3}
+    DownLeft: {fileID: 2800000, guid: 25e4ee0a36ce0da46b8a0bf424a5d8c9, type: 3}
+    DownMiddle: {fileID: 2800000, guid: 0dbc4bb60f8d7374694448ada27a4e05, type: 3}
+    DownRight: {fileID: 2800000, guid: 36300728ee07b4646849d6f4574df123, type: 3}
+  WaterTilePixelsPerUnit: 32
+  FlowerPositions:
+  - {x: -8.1, y: 3.8}
+  - {x: -7.7, y: 2.5}
+  - {x: -7.8, y: 1.2}
+  - {x: -6.2, y: 5}
+  - {x: -4.8, y: 5.2}
+  - {x: -3.3, y: 5}
+  - {x: 5.4, y: 3.6}
+  - {x: 6.8, y: 3.8}
+  - {x: 8.3, y: 3.4}
+  - {x: 5.2, y: -5.6}
+  - {x: 6, y: -6.4}
+  - {x: 9.7, y: -5.8}

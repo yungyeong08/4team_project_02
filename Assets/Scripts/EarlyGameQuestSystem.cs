@@ -101,6 +101,7 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
     private float activeNoticeDuration;
     private float centerNoticeDelay;
     private bool openingSeen;
+    private Texture2D questIcon;
 
     public event Action ProgressChanged;
     public event Action<string, int> QuestCompleted;
@@ -140,6 +141,7 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
             config.ApplyDefaults();
         }
         else config.EnsureValid();
+        questIcon = config.QuestIcon;
         if (config.Quests != null) quests.AddRange(config.Quests);
     }
 
@@ -445,14 +447,22 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
 
     private void DrawQuestPanel(float width, float sideWidth, FishingHudSettings hud)
     {
-        Rect questPanel = new(width - hud.ScreenMargin - sideWidth, hud.ScreenMargin, sideWidth, hud.TopPanelHeight);
-        FishingUiTheme.DrawHudPanel(questPanel,
-            tutorialStep != EarlyTutorialStep.Complete ? "현재 목표" : "현재 퀘스트", FishingUiTheme.AccentBright);
+        float panelHeight = tutorialStep != EarlyTutorialStep.Complete || ActiveQuest == null ? 92f : 106f;
+        Rect questPanel = new(width - hud.ScreenMargin - sideWidth, hud.ScreenMargin, sideWidth, panelHeight);
+        string questCaption = tutorialStep != EarlyTutorialStep.Complete ? "현재 목표" : "현재 퀘스트";
+        FishingUiTheme.DrawHudPanel(questPanel, questIcon == null ? questCaption : "", FishingUiTheme.AccentBright);
+        if (questIcon != null)
+        {
+            Rect iconRect = new(questPanel.x + 13f, questPanel.y + 5f, 22f, 22f);
+            GUI.DrawTexture(iconRect, questIcon, ScaleMode.ScaleToFit, true);
+            FishingUiTheme.ColoredLabel(new Rect(questPanel.x + 40f, questPanel.y + 7f, questPanel.width - 52f, 18f),
+                questCaption, FishingUiTheme.HudCaption, FishingUiTheme.AccentBright);
+        }
         if (tutorialStep != EarlyTutorialStep.Complete)
         {
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 31f, questPanel.width - 32f, 48f),
+            GUI.Label(new Rect(questPanel.x + 16f, questPanel.y + 27f, questPanel.width - 32f, 38f),
                 CondensedTutorialMessage, FishingUiTheme.Heading);
-            GUI.Label(new Rect(questPanel.x + 16f, questPanel.yMax - 31f, questPanel.width - 32f, 22f),
+            GUI.Label(new Rect(questPanel.x + 16f, questPanel.yMax - 25f, questPanel.width - 32f, 18f),
                 "첫 플레이 가이드", FishingUiTheme.Small);
         }
         else if (ActiveQuest != null)
