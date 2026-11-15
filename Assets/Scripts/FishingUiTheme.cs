@@ -73,6 +73,9 @@ public static class FishingUiTheme
     public static GUIStyle OverlaySmall { get; private set; }
     public static GUIStyle OverlaySmallCentered { get; private set; }
     public static GUIStyle OverlayGold { get; private set; }
+    public static GUIStyle AchievementCaption { get; private set; }
+    public static GUIStyle AchievementTitle { get; private set; }
+    public static GUIStyle AchievementReward { get; private set; }
 
     public static FishingHudSettings Settings { get; private set; } = new();
 
@@ -104,6 +107,7 @@ public static class FishingUiTheme
     private static Texture2D inventoryIconTexture;
     private static Texture2D codexIconTexture;
     private static Texture2D homeIconTexture;
+    private static Font readableKoreanFont;
     private static bool initialized;
 
     public static void Configure(FishingHudSettings settings)
@@ -187,6 +191,12 @@ public static class FishingUiTheme
         OverlaySmall = Label(17, FontStyle.Normal, TextAnchor.MiddleLeft, Muted);
         OverlaySmallCentered = Label(17, FontStyle.Normal, TextAnchor.MiddleCenter, Muted);
         OverlayGold = Label(23, FontStyle.Bold, TextAnchor.MiddleLeft, Gold);
+
+        // Achievement notices use a clean Korean system font and no heavy multi-pass outline.
+        // The default IMGUI fallback can blur complex Hangul such as "낚" at small resolutions.
+        AchievementCaption = ReadableKoreanLabel(17, FontStyle.Bold, TextAnchor.MiddleCenter, Gold);
+        AchievementTitle = ReadableKoreanLabel(25, FontStyle.Bold, TextAnchor.MiddleLeft, Cream);
+        AchievementReward = ReadableKoreanLabel(17, FontStyle.Bold, TextAnchor.MiddleCenter, Gold);
     }
 
     public static void DrawDim(Rect rect)
@@ -507,6 +517,36 @@ public static class FishingUiTheme
             clipping = TextClipping.Clip,
             normal = { textColor = color }
         };
+    }
+
+    private static GUIStyle ReadableKoreanLabel(int size, FontStyle fontStyle, TextAnchor alignment, Color color)
+    {
+        GUIStyle style = Label(size, fontStyle, alignment, color);
+        style.font = ResolveReadableKoreanFont();
+        return style;
+    }
+
+    private static Font ResolveReadableKoreanFont()
+    {
+        if (readableKoreanFont != null) return readableKoreanFont;
+
+        string[] preferredFonts =
+        {
+            "Malgun Gothic", "맑은 고딕", "Apple SD Gothic Neo",
+            "Noto Sans CJK KR", "Noto Sans KR", "Arial Unicode MS"
+        };
+        string[] installedFonts = Font.GetOSInstalledFontNames();
+        for (int preferred = 0; preferred < preferredFonts.Length; preferred++)
+        {
+            for (int installed = 0; installed < installedFonts.Length; installed++)
+            {
+                if (!string.Equals(preferredFonts[preferred], installedFonts[installed],
+                        System.StringComparison.OrdinalIgnoreCase)) continue;
+                readableKoreanFont = Font.CreateDynamicFontFromOSFont(installedFonts[installed], 25);
+                return readableKoreanFont;
+            }
+        }
+        return null;
     }
 
     private static GUIStyle FramedStyle(Texture2D background, int border)

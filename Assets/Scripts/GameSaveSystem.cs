@@ -6,7 +6,7 @@ using UnityEngine;
 [Serializable]
 public sealed class FishingGameSaveData
 {
-    public const int CurrentVersion = 8;
+    public const int CurrentVersion = 9;
     public int Version = CurrentVersion;
     public int Money = 100;
     public List<FishInventory.FishProgress> FishProgress = new();
@@ -206,7 +206,10 @@ public sealed class GameSaveSystem : MonoBehaviour
                 else playerDebt.Restore(defaultDebtAmount, defaultDebtAmount, 0, false, false);
             }
 
-            bool requiresStarterPosition = data.Version < 6 ||
+            // v9 expands the compact starter map into the shared three-lake overworld.
+            // Older coordinates remain valid numbers but no longer point at a playable route,
+            // so only the position is migrated; inventory, money, rods and progress are retained.
+            bool requiresStarterPosition = data.Version < 9 ||
                 data.EarlyGameProgress == null ||
                 data.EarlyGameProgress.TutorialStep <= (int)EarlyTutorialStep.ReachFirstLake;
             Vector2 savedPosition = requiresStarterPosition

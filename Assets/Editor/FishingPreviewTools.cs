@@ -405,21 +405,75 @@ public static class FishingPreviewTools
             throw new System.InvalidOperationException("Beginner pond must not contain Epic or Legendary fish.");
         if (config.FishingSpots[1].GetWeight(FishRarity.Legendary) > 0f)
             throw new System.InvalidOperationException("Intermediate lake must not contain Legendary fish.");
-        if (config.FishingSpots[2].GetWeight(FishRarity.Legendary) <= 0f)
-            throw new System.InvalidOperationException("Advanced lake needs a Legendary chance.");
+        if (config.FishingSpots[2].GetWeight(FishRarity.Legendary) > 0f ||
+            config.FishingSpots[2].GetWeight(FishRarity.Epic) <= 0f)
+            throw new System.InvalidOperationException("Advanced lake must contain Epic fish but no Legendary fish in this content phase.");
         if (!(config.FishingSpots[0].DifficultyMultiplier < config.FishingSpots[1].DifficultyMultiplier &&
               config.FishingSpots[1].DifficultyMultiplier < config.FishingSpots[2].DifficultyMultiplier))
             throw new System.InvalidOperationException("Fishing spot difficulty must increase with progression.");
 
         var catalog = FishCatalog.CreateDefault();
+        if (catalog.Count != 20)
+            throw new System.InvalidOperationException($"Expected 20 fish definitions, found {catalog.Count}.");
+        var knownIds = new System.Collections.Generic.HashSet<string>();
+        foreach (FishDefinition fish in catalog)
+            if (fish == null || string.IsNullOrWhiteSpace(fish.Id) || !knownIds.Add(fish.Id))
+                throw new System.InvalidOperationException("Fish catalog contains a missing or duplicate ID.");
+        foreach (FishDefinition fish in catalog)
+            if (fish.Rarity == FishRarity.Legendary)
+                throw new System.InvalidOperationException($"{fish.DisplayName} must not use Legendary rarity in this content phase.");
+
+        var expectedPools = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.Dictionary<string, float>>
+        {
+            ["village_pond"] = new()
+            {
+                ["northern_pike"] = 25f, ["common_carp"] = 22f, ["golden_salmon"] = 18f,
+                ["sturgeon"] = 15f, ["ancient_pike"] = 12f, ["atlantic_salmon"] = 8f
+            },
+            ["deep_lake"] = new()
+            {
+                ["ancient_pike"] = 12f, ["atlantic_salmon"] = 12f, ["squid"] = 12f,
+                ["pufferfish"] = 10f, ["crucian_carp"] = 12f, ["silk_carp"] = 8f,
+                ["golden_crucian"] = 8f, ["snakehead"] = 10f, ["jade_carp"] = 8f,
+                ["sturgeon"] = 8f
+            },
+            ["legend_lake"] = new()
+            {
+                ["silk_carp"] = 16f, ["golden_crucian"] = 14f, ["moonlight_carp"] = 14f,
+                ["swordfish"] = 13f, ["bluefin_tuna"] = 12f, ["red_trout"] = 11f,
+                ["golden_minnow"] = 10f, ["lake_catfish"] = 6f,
+                ["legendary_golden_carp"] = 4f
+            }
+        };
+
         for (int spotIndex = 0; spotIndex < config.FishingSpots.Count; spotIndex++)
         {
             FishingSpotDefinition spot = config.FishingSpots[spotIndex];
+            if (!spot.Enabled || !spot.InitiallyUnlocked)
+                throw new System.InvalidOperationException($"{spot.DisplayName} must be enabled and unlocked for the current test build.");
+            if (spot.FishPool == null || spot.FishPool.Count == 0)
+                throw new System.InvalidOperationException($"{spot.DisplayName} has no exact fish pool.");
+            if (!expectedPools.TryGetValue(spot.Id, out var expectedPool) || spot.FishPool.Count != expectedPool.Count)
+                throw new System.InvalidOperationException($"{spot.DisplayName} does not match the expected species count.");
+            var poolIds = new System.Collections.Generic.HashSet<string>();
+            float totalWeight = 0f;
+            foreach (FishPoolEntry entry in spot.FishPool)
+            {
+                if (entry == null || !knownIds.Contains(entry.FishId) || !poolIds.Add(entry.FishId))
+                    throw new System.InvalidOperationException($"{spot.DisplayName} contains a missing, unknown or duplicate fish ID.");
+                if (!expectedPool.TryGetValue(entry.FishId, out float expectedWeight) ||
+                    Mathf.Abs(expectedWeight - entry.Weight) > .01f)
+                    throw new System.InvalidOperationException($"{spot.DisplayName} has an unexpected species or weight: {entry.FishId} = {entry.Weight}.");
+                totalWeight += Mathf.Max(0f, entry.Weight);
+            }
+            if (Mathf.Abs(totalWeight - 100f) > .01f)
+                throw new System.InvalidOperationException($"{spot.DisplayName} weights total {totalWeight}, expected 100.");
+
             for (int sample = 0; sample < 1000; sample++)
             {
                 FishDefinition selected = spot.SelectFish(catalog);
-                if (selected == null || spot.GetWeight(selected.Rarity) <= 0f)
-                    throw new System.InvalidOperationException($"{spot.DisplayName} selected a forbidden fish rarity.");
+                if (selected == null || spot.GetFishWeight(selected.Id) <= 0f)
+                    throw new System.InvalidOperationException($"{spot.DisplayName} selected a fish outside its configured pool.");
             }
         }
 
@@ -429,11 +483,11 @@ public static class FishingPreviewTools
         {
             if (builder == null) throw new System.InvalidOperationException("Fishing scene preview has no map builder.");
             builder.Build();
-            if (builder.FishingSpots.Count != 1)
-                throw new System.InvalidOperationException("Fishing scene preview must contain only the first lake.");
+            if (builder.FishingSpots.Count != 3)
+                throw new System.InvalidOperationException("Fishing scene preview must contain all three lakes.");
         }
 
-        Debug.Log("MAP_VALIDATION_OK: 3 future spot definitions, first-lake-only scene, rarity tables, difficulty progression, and selection samples verified.");
+        Debug.Log("MAP_VALIDATION_OK: 20 fish, 3 playable spots, exact 100-weight pools, difficulty progression, and selection samples verified.");
     }
 
     private static FishingMapConfig EnsureMapConfig()
@@ -441,7 +495,7 @@ public static class FishingPreviewTools
         FishingMapConfig config = AssetDatabase.LoadAssetAtPath<FishingMapConfig>(MapConfigPath);
         if (config != null)
         {
-            if (config.EnsureFirstAreaLayout())
+            if (config.EnsureThreeAreaLayout())
             {
                 EditorUtility.SetDirty(config);
                 AssetDatabase.SaveAssets();
@@ -567,6 +621,16 @@ public static class FishingPreviewTools
         changed |= SetFishArt(config, "crucian_carp", "Assets/Art/Fish/Fish8.png");
         changed |= SetFishArt(config, "swordfish", "Assets/Art/Fish/Fish9.png");
         changed |= SetFishArt(config, "bluefin_tuna", "Assets/Art/Fish/Fish10.png");
+        changed |= SetFishArt(config, "lake_catfish", "Assets/Art/Fish/Fish11.png");
+        changed |= SetFishArt(config, "silk_carp", "Assets/Art/Fish/Fish12.png");
+        changed |= SetFishArt(config, "red_trout", "Assets/Art/Fish/Fish13.png");
+        changed |= SetFishArt(config, "golden_crucian", "Assets/Art/Fish/Fish14.png");
+        changed |= SetFishArt(config, "snakehead", "Assets/Art/Fish/Fish15.png");
+        changed |= SetFishArt(config, "jade_carp", "Assets/Art/Fish/Fish16.png");
+        changed |= SetFishArt(config, "golden_minnow", "Assets/Art/Fish/Fish17.png");
+        changed |= SetFishArt(config, "sturgeon", "Assets/Art/Fish/Fish18.png");
+        changed |= SetFishArt(config, "moonlight_carp", "Assets/Art/Fish/Fish19.png");
+        changed |= SetFishArt(config, "legendary_golden_carp", "Assets/Art/Fish/Fish20.png");
         changed |= SetRodArt(config, "basic_rod", "Assets/Art/Fishing rod/fishing rod1.png");
         changed |= SetRodArt(config, "sturdy_rod", "Assets/Art/Fishing rod/fishing rod2.png");
         changed |= SetRodArt(config, "river_rod", "Assets/Art/Fishing rod/fishing rod3.png");

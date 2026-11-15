@@ -298,8 +298,11 @@ public sealed class FishingGameController : MonoBehaviour
             FishingSpotDefinition lockedSpot = nearbySpot == null && character != null
                 ? map.GetNearestLockedFishingSpot(character.transform.position)
                 : null;
-            UpdateRegionNotice(nearbySpot ?? lockedSpot);
-            if (nearbySpot != null) areaProgress?.NotifyAreaEntered(nearbySpot.Id);
+            FishingSpotDefinition regionSpot = character != null
+                ? map.GetNearestRegionSpot(character.transform.position)
+                : null;
+            UpdateRegionNotice(regionSpot ?? nearbySpot ?? lockedSpot);
+            if (regionSpot != null) areaProgress?.NotifyAreaEntered(regionSpot.Id);
             actionHint = nearbySpot != null
                 ? "낚시하기"
                 : lockedSpot != null ? "아직 들어갈 수 없는 지역입니다" : "";

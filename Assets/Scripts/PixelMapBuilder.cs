@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-/// <summary>Builds the current starter area while retaining future spot data in the map config.</summary>
+/// <summary>Builds the shared overworld and all enabled fishing areas from map data.</summary>
 [ExecuteAlways]
 public sealed class PixelMapBuilder : MonoBehaviour
 {
@@ -31,7 +31,7 @@ public sealed class PixelMapBuilder : MonoBehaviour
             if (mapConfig == null) mapConfig = Resources.Load<FishingMapConfig>(ConfigResourcePath);
             if (mapConfig == null) mapConfig = FishingMapConfig.CreateRuntimeDefault();
             if (mapConfig.FishingSpots == null || mapConfig.FishingSpots.Count == 0) mapConfig.ApplyDefaults();
-            mapConfig.EnsureFirstAreaLayout();
+            mapConfig.EnsureThreeAreaLayout();
             return mapConfig;
         }
     }
@@ -114,6 +114,25 @@ public sealed class PixelMapBuilder : MonoBehaviour
         return runtimeSpots.Find(spot => spot != null && spot.Id == id);
     }
 
+    public FishingSpotDefinition GetNearestRegionSpot(Vector2 playerPosition)
+    {
+        FishingSpotDefinition nearest = null;
+        float nearestDistance = float.MaxValue;
+        for (int i = 0; i < runtimeSpots.Count; i++)
+        {
+            FishingSpotDefinition spot = runtimeSpots[i];
+            if (spot == null || (areaProgress != null && !areaProgress.IsUnlocked(spot.Id))) continue;
+            float regionRadius = Mathf.Max(7.5f, Mathf.Max(spot.WaterSize.x, spot.WaterSize.y) * .72f);
+            float distance = Vector2.Distance(playerPosition, spot.WaterCenter);
+            if (distance <= regionRadius && distance < nearestDistance)
+            {
+                nearest = spot;
+                nearestDistance = distance;
+            }
+        }
+        return nearest;
+    }
+
     public FishingSpotDefinition GetNearestLockedFishingSpot(Vector2 playerPosition)
     {
         for (int i = 0; i < runtimeSpots.Count; i++)
@@ -136,13 +155,25 @@ public sealed class PixelMapBuilder : MonoBehaviour
     private void CreateGroundAndPaths(Transform parent)
     {
         CreateRect(parent, "Grass Ground", Vector2.zero, Config.MapSize, groundColor, -10, false);
-        CreateRect(parent, "Village Entrance Path", new Vector2(-9f, -5.7f), new Vector2(2f, 6.6f), pathColor, -8, false);
-        CreateRect(parent, "Beginner Pond Trail", new Vector2(-4.1f, -2.5f), new Vector2(11.8f, 1.6f), pathColor, -8, false);
-        CreateRect(parent, "Pond Approach", new Vector2(.55f, -.5f), new Vector2(1.7f, 5.5f), pathColor, -8, false);
-        CreateRect(parent, "Market Lane", new Vector2(3.75f, 1.2f), new Vector2(6.5f, 1.6f), pathColor, -8, false);
-        CreateRect(parent, "Market Square", new Vector2(7f, 1.2f), new Vector2(3.5f, 3.2f), new Color(.57f, .49f, .30f), -7, false);
-        CreateRect(parent, "Rod Shop Lane", new Vector2(7.4f, -2.1f), new Vector2(1.7f, 5.1f), pathColor, -8, false);
-        CreateRect(parent, "Rod Shop Apron", new Vector2(8f, -5.1f), new Vector2(3.5f, 2.3f), new Color(.57f, .49f, .30f), -7, false);
+        CreateRect(parent, "Village Entrance Path", new Vector2(-33f, -8f), new Vector2(2.4f, 8f), pathColor, -8, false);
+        CreateRect(parent, "Village Main Lane", new Vector2(-22.5f, -10f), new Vector2(23f, 2.2f), pathColor, -8, false);
+        CreateRect(parent, "Beginner Pond Approach", new Vector2(-20.4f, -7f), new Vector2(2.2f, 6f), pathColor, -8, false);
+        CreateRect(parent, "Market Square", new Vector2(-12f, -5f), new Vector2(4.2f, 3.2f), new Color(.57f, .49f, .30f), -7, false);
+        CreateRect(parent, "Rod Shop Apron", new Vector2(-12f, -10f), new Vector2(4.2f, 2.8f), new Color(.57f, .49f, .30f), -7, false);
+
+        CreatePathBetween(parent, "Pond to Deep Lake Trail", new Vector2(-20.4f, -4f), new Vector2(-1.6f, 4f), -11f);
+        CreatePathBetween(parent, "Deep to Legend Lake Trail", new Vector2(-1.6f, 4f), new Vector2(23.9f, -3f), 12f);
+    }
+
+    private void CreatePathBetween(Transform parent, string name, Vector2 from, Vector2 to, float bendX)
+    {
+        const float thickness = 1.8f;
+        CreateRect(parent, name + " A", new Vector2((from.x + bendX) * .5f, from.y),
+            new Vector2(Mathf.Abs(bendX - from.x) + thickness, thickness), pathColor, -8, false);
+        CreateRect(parent, name + " B", new Vector2(bendX, (from.y + to.y) * .5f),
+            new Vector2(thickness, Mathf.Abs(to.y - from.y) + thickness), pathColor, -8, false);
+        CreateRect(parent, name + " C", new Vector2((bendX + to.x) * .5f, to.y),
+            new Vector2(Mathf.Abs(to.x - bendX) + thickness, thickness), pathColor, -8, false);
     }
 
     private void CreateFishingArea(Transform waterParent, Transform gameplayParent, FishingSpotDefinition spot, int index)
@@ -183,20 +214,23 @@ public sealed class PixelMapBuilder : MonoBehaviour
 
         Vector2[] treePositions =
         {
-            new(-11f,-8f), new(-11f,-4.5f), new(-11f,0f), new(-10.5f,5f),
-            new(-8f,7.5f), new(-4.5f,7.7f), new(-.8f,7.5f), new(3f,7.7f), new(7f,7.5f),
-            new(10.8f,6f), new(11f,2f), new(11f,-2f), new(11f,-6.5f),
-            new(8f,-8f), new(3f,-7.8f), new(-3f,-7.8f), new(-7f,-8.2f)
+            new(-40f,-15f), new(-40f,-7f), new(-40f,2f), new(-40f,11f),
+            new(-32f,16f), new(-22f,16f), new(-12f,16f), new(-2f,16f),
+            new(9f,16f), new(20f,16f), new(31f,16f), new(40f,13f),
+            new(40f,5f), new(40f,-5f), new(40f,-14f), new(31f,-16f),
+            new(20f,-16f), new(9f,-16f), new(-2f,-16f), new(-14f,-16f),
+            new(-26f,-16f), new(-36f,-14f), new(-15f,8f), new(14f,8f),
+            new(15f,-9f), new(34f,8f)
         };
         if (treeTexture != null)
             foreach (Vector2 position in treePositions) CreateSpriteDecoration(parent, "Tree", treeTexture, position, 32f, 2, true);
 
         Vector2[] grassPositions =
         {
-            new(-8f,4f), new(-7.2f,5f), new(-5.8f,5.5f), new(-1.5f,5.3f), new(0f,4.8f),
-            new(4f,4.8f), new(5f,5.2f), new(9f,4.5f),
-            new(-8f,-4.5f), new(-7f,-5f), new(-4.5f,-5.2f),
-            new(2.5f,-4.8f), new(3f,-5.5f), new(5f,-6.8f), new(10f,-3.5f), new(9f,-1f)
+            new(-35f,7f), new(-30f,10f), new(-18f,10f), new(-8f,9f),
+            new(-7f,-9f), new(0f,-10f), new(8f,-8f), new(18f,-12f),
+            new(22f,10f), new(29f,11f), new(35f,5f), new(34f,-11f),
+            new(-28f,2f), new(-16f,1f), new(11f,1f), new(17f,5f)
         };
         if (grassTexture != null)
             foreach (Vector2 position in grassPositions) CreateSpriteDecoration(parent, "Grass", grassTexture, position, 32f, -1, false);

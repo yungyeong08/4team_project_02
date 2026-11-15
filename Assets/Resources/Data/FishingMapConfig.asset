@@ -12,83 +12,136 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 488ae741a1aeb6e4c88c1cf6dd7279dc, type: 3}
   m_Name: FishingMapConfig
   m_EditorClassIdentifier: Assembly-CSharp::FishingMapConfig
-  MapSize: {x: 24, y: 18}
-  PlayerStart: {x: -9, y: -7}
-  FishingShopPosition: {x: 8, y: -5.2}
-  FishMarketPosition: {x: 7, y: 1.5}
+  MapSize: {x: 84, y: 38}
+  PlayerStart: {x: -33, y: -11}
+  FishingShopPosition: {x: -12, y: -10}
+  FishMarketPosition: {x: -12, y: -5}
   FishingSpots:
   - Id: village_pond
-    DisplayName: "\uB9C8\uC744 \uC5F0\uBABB \xB7 \uCD08\uAE09"
+    DisplayName: "\uB9C8\uC744 \uC5F0\uBABB"
     Enabled: 1
     InitiallyUnlocked: 1
-    RequiredQuestId:
-    PlayerSpawnPoint: {x: 0.45, y: -0.3}
-    WaterCenter: {x: -3.5, y: 1.6}
-    WaterSize: {x: 7, y: 5.5}
-    ShorePosition: {x: 0.45, y: -0.3}
-    BobberPosition: {x: -0.4, y: -0.3}
+    RequiredQuestId: 
+    PlayerSpawnPoint: {x: -20.4, y: -4}
+    WaterCenter: {x: -25, y: -4}
+    WaterSize: {x: 8, y: 6}
+    ShorePosition: {x: -20.4, y: -4}
+    BobberPosition: {x: -21.7, y: -4}
     InteractionRange: 1.65
     DifficultyMultiplier: 0.9
     FishPoolIds: []
-    RarityWeights:
-    - Rarity: 0
-      Weight: 70
-    - Rarity: 1
+    FishPool:
+    - FishId: northern_pike
       Weight: 25
-    - Rarity: 2
-      Weight: 5
-    - Rarity: 3
-      Weight: 0
-    - Rarity: 4
-      Weight: 0
-  - Id: forest_lake
-    DisplayName: "\uC194\uBC14\uB78C \uD638\uC218 \xB7 \uC911\uAE09"
-    Enabled: 0
-    InitiallyUnlocked: 0
-    RequiredQuestId:
-    PlayerSpawnPoint: {x: 4.65, y: 1}
-    WaterCenter: {x: 10, y: 1}
-    WaterSize: {x: 10, y: 7}
-    ShorePosition: {x: 4.65, y: 1}
-    BobberPosition: {x: 6.15, y: 1}
-    InteractionRange: 1.7
-    DifficultyMultiplier: 1.08
-    FishPoolIds: []
-    RarityWeights:
-    - Rarity: 0
+    - FishId: common_carp
+      Weight: 22
+    - FishId: golden_salmon
+      Weight: 18
+    - FishId: sturgeon
       Weight: 15
-    - Rarity: 1
-      Weight: 45
-    - Rarity: 2
-      Weight: 32
-    - Rarity: 3
+    - FishId: ancient_pike
+      Weight: 12
+    - FishId: atlantic_salmon
       Weight: 8
+    RarityWeights:
+    - Rarity: 0
+      Weight: 80
+    - Rarity: 1
+      Weight: 20
+    - Rarity: 2
+      Weight: 0
+    - Rarity: 3
+      Weight: 0
     - Rarity: 4
       Weight: 0
-  - Id: ancient_lake
-    DisplayName: "\uACE0\uC694\uD55C \uC2EC\uC5F0 \xB7 \uACE0\uAE09"
-    Enabled: 0
-    InitiallyUnlocked: 0
-    RequiredQuestId:
-    PlayerSpawnPoint: {x: -10, y: 4.65}
-    WaterCenter: {x: -10, y: 8.5}
-    WaterSize: {x: 11, y: 7}
-    ShorePosition: {x: -10, y: 4.65}
-    BobberPosition: {x: -10, y: 6.15}
-    InteractionRange: 1.75
-    DifficultyMultiplier: 1.25
+  - Id: deep_lake
+    DisplayName: "\uAE4A\uC740 \uD638\uC218"
+    Enabled: 1
+    InitiallyUnlocked: 1
+    RequiredQuestId: 
+    PlayerSpawnPoint: {x: -1.6, y: 4}
+    WaterCenter: {x: 4, y: 4}
+    WaterSize: {x: 10, y: 7}
+    ShorePosition: {x: -1.6, y: 4}
+    BobberPosition: {x: -0.2, y: 4}
+    InteractionRange: 1.7
+    DifficultyMultiplier: 1.05
     FishPoolIds: []
+    FishPool:
+    - FishId: ancient_pike
+      Weight: 12
+    - FishId: atlantic_salmon
+      Weight: 12
+    - FishId: squid
+      Weight: 12
+    - FishId: pufferfish
+      Weight: 10
+    - FishId: crucian_carp
+      Weight: 12
+    - FishId: silk_carp
+      Weight: 8
+    - FishId: golden_crucian
+      Weight: 8
+    - FishId: snakehead
+      Weight: 10
+    - FishId: jade_carp
+      Weight: 8
+    - FishId: sturgeon
+      Weight: 8
+    RarityWeights:
+    - Rarity: 0
+      Weight: 8
+    - Rarity: 1
+      Weight: 76
+    - Rarity: 2
+      Weight: 16
+    - Rarity: 3
+      Weight: 0
+    - Rarity: 4
+      Weight: 0
+  - Id: legend_lake
+    DisplayName: "\uC0C1\uAE09 \uD638\uC218"
+    Enabled: 1
+    InitiallyUnlocked: 1
+    RequiredQuestId: 
+    PlayerSpawnPoint: {x: 23.9, y: -3}
+    WaterCenter: {x: 30, y: -3}
+    WaterSize: {x: 11, y: 8}
+    ShorePosition: {x: 23.9, y: -3}
+    BobberPosition: {x: 25.3, y: -3}
+    InteractionRange: 1.75
+    DifficultyMultiplier: 1.18
+    FishPoolIds: []
+    FishPool:
+    - FishId: silk_carp
+      Weight: 16
+    - FishId: golden_crucian
+      Weight: 14
+    - FishId: moonlight_carp
+      Weight: 14
+    - FishId: swordfish
+      Weight: 13
+    - FishId: bluefin_tuna
+      Weight: 12
+    - FishId: red_trout
+      Weight: 11
+    - FishId: golden_minnow
+      Weight: 10
+    - FishId: lake_catfish
+      Weight: 6
+    - FishId: legendary_golden_carp
+      Weight: 4
     RarityWeights:
     - Rarity: 0
       Weight: 0
     - Rarity: 1
-      Weight: 12
+      Weight: 0
     - Rarity: 2
-      Weight: 43
+      Weight: 90
     - Rarity: 3
-      Weight: 38
+      Weight: 10
     - Rarity: 4
-      Weight: 7
+      Weight: 0
   WaterTiles:
     UpLeft: {fileID: 2800000, guid: aab673a2089679240a05d2499d2b8652, type: 3}
     UpMiddle: {fileID: 2800000, guid: a1a0344ef6fdc7345bb7d2316261c151, type: 3}
@@ -101,15 +154,19 @@ MonoBehaviour:
     DownRight: {fileID: 2800000, guid: 36300728ee07b4646849d6f4574df123, type: 3}
   WaterTilePixelsPerUnit: 32
   FlowerPositions:
-  - {x: -8.1, y: 3.8}
-  - {x: -7.7, y: 2.5}
-  - {x: -7.8, y: 1.2}
-  - {x: -6.2, y: 5}
-  - {x: -4.8, y: 5.2}
-  - {x: -3.3, y: 5}
-  - {x: 5.4, y: 3.6}
-  - {x: 6.8, y: 3.8}
-  - {x: 8.3, y: 3.4}
-  - {x: 5.2, y: -5.6}
-  - {x: 6, y: -6.4}
-  - {x: 9.7, y: -5.8}
+  - {x: -36, y: -3}
+  - {x: -32, y: 2}
+  - {x: -27, y: 7}
+  - {x: -18, y: 5}
+  - {x: -11, y: 4}
+  - {x: -7, y: -1}
+  - {x: 1, y: -5}
+  - {x: 7, y: 9}
+  - {x: 12, y: 4}
+  - {x: 16, y: -8}
+  - {x: 22, y: 8}
+  - {x: 29, y: 6}
+  - {x: 35, y: -9}
+  - {x: 38, y: 2}
+  - {x: 33, y: 12}
+  - {x: -5, y: 13}

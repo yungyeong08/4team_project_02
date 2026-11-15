@@ -36,10 +36,10 @@ public sealed class FishingWaterTileSet
 [CreateAssetMenu(fileName = "FishingMapConfig", menuName = "Fishing/Fishing Map Config")]
 public sealed class FishingMapConfig : ScriptableObject
 {
-    public Vector2 MapSize = new(24f, 18f);
-    public Vector2 PlayerStart = new(-9f, -7f);
-    public Vector2 FishingShopPosition = new(8f, -5.2f);
-    public Vector2 FishMarketPosition = new(7f, 1.5f);
+    public Vector2 MapSize = new(84f, 38f);
+    public Vector2 PlayerStart = new(-33f, -11f);
+    public Vector2 FishingShopPosition = new(-12f, -10f);
+    public Vector2 FishMarketPosition = new(-12f, -5f);
     public List<FishingSpotDefinition> FishingSpots = new();
 
     [Header("Replaceable map art")]
@@ -51,45 +51,28 @@ public sealed class FishingMapConfig : ScriptableObject
 
     public void ApplyDefaults()
     {
-        MapSize = new Vector2(24f, 18f);
-        PlayerStart = new Vector2(-9f, -7f);
-        FishingShopPosition = new Vector2(8f, -5.2f);
-        FishMarketPosition = new Vector2(7f, 1.5f);
+        MapSize = new Vector2(84f, 38f);
+        PlayerStart = new Vector2(-33f, -11f);
+        FishingShopPosition = new Vector2(-12f, -10f);
+        FishMarketPosition = new Vector2(-12f, -5f);
         FishingSpots = CreateDefaultSpots();
         FlowerPositions = CreateDefaultFlowerPositions();
     }
 
-    public bool EnsureFirstAreaLayout()
+    public bool EnsureThreeAreaLayout()
     {
         bool changed = false;
-        // The first playable milestone uses a compact starter map. Keep the other
-        // spot definitions below as future content data without building them yet.
-        if (Vector2.Distance(MapSize, new Vector2(44f, 30f)) < .05f)
+        bool legacyLayout = MapSize.x < 60f || MapSize.y < 30f || FishingSpots == null ||
+            FishingSpots.Count != 3 ||
+            FishingSpots.Exists(spot => spot == null || spot.FishPool == null || spot.FishPool.Count == 0);
+        if (legacyLayout)
         {
-            MapSize = new Vector2(24f, 18f);
-            PlayerStart = new Vector2(4f, -6f);
-            FishingShopPosition = new Vector2(7f, -2.5f);
-            FishMarketPosition = new Vector2(3.5f, -2.5f);
-            changed = true;
-        }
-
-        if (FishingSpots != null && FishingSpots.Count > 0 &&
-            FishingSpots[0] != null && FishingSpots[0].Id == "village_pond" &&
-            Vector2.Distance(FishingSpots[0].WaterCenter, new Vector2(-9f, -8f)) < .05f)
-        {
-            FishingSpots[0] = CreateDefaultSpots()[0];
-            changed = true;
-        }
-
-        // Migrate the old test-map shop positions that overlapped the beginner fishing interaction.
-        if (Vector2.Distance(FishingShopPosition, new Vector2(3.2f, -8f)) < .05f)
-        {
-            FishingShopPosition = new Vector2(3f, -7.5f);
-            changed = true;
-        }
-        if (Vector2.Distance(FishMarketPosition, new Vector2(-3.2f, -8f)) < .05f)
-        {
-            FishMarketPosition = new Vector2(-1.5f, -5.5f);
+            MapSize = new Vector2(84f, 38f);
+            PlayerStart = new Vector2(-33f, -11f);
+            FishingShopPosition = new Vector2(-12f, -10f);
+            FishMarketPosition = new Vector2(-12f, -5f);
+            FishingSpots = CreateDefaultSpots();
+            FlowerPositions = CreateDefaultFlowerPositions();
             changed = true;
         }
         if (FlowerPositions == null || FlowerPositions.Count == 0)
@@ -100,14 +83,17 @@ public sealed class FishingMapConfig : ScriptableObject
         return changed;
     }
 
+    // Kept so older editor tooling can migrate safely while packages recompile.
+    public bool EnsureFirstAreaLayout() => EnsureThreeAreaLayout();
+
     public static List<Vector2> CreateDefaultFlowerPositions()
     {
         return new List<Vector2>
         {
-            new(-8.1f, 3.8f), new(-7.7f, 2.5f), new(-7.8f, 1.2f),
-            new(-6.2f, 5.0f), new(-4.8f, 5.2f), new(-3.3f, 5.0f),
-            new(5.4f, 3.6f), new(6.8f, 3.8f), new(8.3f, 3.4f),
-            new(5.2f, -5.6f), new(6.0f, -6.4f), new(9.7f, -5.8f)
+            new(-36f, -3f), new(-32f, 2f), new(-27f, 7f), new(-18f, 5f),
+            new(-11f, 4f), new(-7f, -1f), new(1f, -5f), new(7f, 9f),
+            new(12f, 4f), new(16f, -8f), new(22f, 8f), new(29f, 6f),
+            new(35f, -9f), new(38f, 2f), new(33f, 12f), new(-5f, 13f)
         };
     }
 
@@ -116,46 +102,69 @@ public sealed class FishingMapConfig : ScriptableObject
         return new List<FishingSpotDefinition>
         {
             new FishingSpotDefinition(
-                "village_pond", "마을 연못 · 초급",
-                new Vector2(-3.5f, 1.6f), new Vector2(7f, 5.5f),
-                new Vector2(.45f, -.3f), new Vector2(-.4f, -.3f),
+                "village_pond", "마을 연못",
+                new Vector2(-25f, -4f), new Vector2(8f, 6f),
+                new Vector2(-20.4f, -4f), new Vector2(-21.7f, -4f),
                 1.65f, .9f,
-                new FishRarityWeight(FishRarity.Common, 70f),
-                new FishRarityWeight(FishRarity.Uncommon, 25f),
-                new FishRarityWeight(FishRarity.Rare, 5f),
+                new FishRarityWeight(FishRarity.Common, 80f),
+                new FishRarityWeight(FishRarity.Uncommon, 20f),
+                new FishRarityWeight(FishRarity.Rare, 0f),
                 new FishRarityWeight(FishRarity.Epic, 0f),
                 new FishRarityWeight(FishRarity.Legendary, 0f))
             {
                 Enabled = true,
-                InitiallyUnlocked = true
+                InitiallyUnlocked = true,
+                FishPool = new List<FishPoolEntry>
+                {
+                    new("northern_pike", 25f), new("common_carp", 22f),
+                    new("golden_salmon", 18f), new("sturgeon", 15f),
+                    new("ancient_pike", 12f), new("atlantic_salmon", 8f)
+                }
             },
             new FishingSpotDefinition(
-                "forest_lake", "솔바람 호수 · 중급",
-                new Vector2(10f, 1f), new Vector2(10f, 7f),
-                new Vector2(4.65f, 1f), new Vector2(6.15f, 1f),
-                1.7f, 1.08f,
-                new FishRarityWeight(FishRarity.Common, 15f),
-                new FishRarityWeight(FishRarity.Uncommon, 45f),
-                new FishRarityWeight(FishRarity.Rare, 32f),
-                new FishRarityWeight(FishRarity.Epic, 8f),
+                "deep_lake", "깊은 호수",
+                new Vector2(4f, 4f), new Vector2(10f, 7f),
+                new Vector2(-1.6f, 4f), new Vector2(-.2f, 4f),
+                1.7f, 1.05f,
+                new FishRarityWeight(FishRarity.Common, 8f),
+                new FishRarityWeight(FishRarity.Uncommon, 76f),
+                new FishRarityWeight(FishRarity.Rare, 16f),
+                new FishRarityWeight(FishRarity.Epic, 0f),
                 new FishRarityWeight(FishRarity.Legendary, 0f))
             {
-                Enabled = false,
-                InitiallyUnlocked = false
+                Enabled = true,
+                InitiallyUnlocked = true,
+                FishPool = new List<FishPoolEntry>
+                {
+                    new("ancient_pike", 12f), new("atlantic_salmon", 12f),
+                    new("squid", 12f), new("pufferfish", 10f),
+                    new("crucian_carp", 12f), new("silk_carp", 8f),
+                    new("golden_crucian", 8f), new("snakehead", 10f),
+                    new("jade_carp", 8f), new("sturgeon", 8f)
+                }
             },
             new FishingSpotDefinition(
-                "ancient_lake", "고요한 심연 · 고급",
-                new Vector2(-10f, 8.5f), new Vector2(11f, 7f),
-                new Vector2(-10f, 4.65f), new Vector2(-10f, 6.15f),
-                1.75f, 1.25f,
+                "legend_lake", "상급 호수",
+                new Vector2(30f, -3f), new Vector2(11f, 8f),
+                new Vector2(23.9f, -3f), new Vector2(25.3f, -3f),
+                1.75f, 1.18f,
                 new FishRarityWeight(FishRarity.Common, 0f),
-                new FishRarityWeight(FishRarity.Uncommon, 12f),
-                new FishRarityWeight(FishRarity.Rare, 43f),
-                new FishRarityWeight(FishRarity.Epic, 38f),
-                new FishRarityWeight(FishRarity.Legendary, 7f))
+                new FishRarityWeight(FishRarity.Uncommon, 0f),
+                new FishRarityWeight(FishRarity.Rare, 90f),
+                new FishRarityWeight(FishRarity.Epic, 10f),
+                new FishRarityWeight(FishRarity.Legendary, 0f))
             {
-                Enabled = false,
-                InitiallyUnlocked = false
+                Enabled = true,
+                InitiallyUnlocked = true,
+                RequiredQuestId = "",
+                FishPool = new List<FishPoolEntry>
+                {
+                    new("silk_carp", 16f), new("golden_crucian", 14f),
+                    new("moonlight_carp", 14f), new("swordfish", 13f),
+                    new("bluefin_tuna", 12f), new("red_trout", 11f),
+                    new("golden_minnow", 10f), new("lake_catfish", 6f),
+                    new("legendary_golden_carp", 4f)
+                }
             }
         };
     }

@@ -15,6 +15,22 @@ public sealed class FishRarityWeight
     }
 }
 
+[Serializable]
+public sealed class FishPoolEntry
+{
+    [Tooltip("FishDefinition.Id. Display names may change without breaking this reference.")]
+    public string FishId;
+    [Min(0f)] public float Weight;
+
+    public FishPoolEntry() { }
+
+    public FishPoolEntry(string fishId, float weight)
+    {
+        FishId = fishId;
+        Weight = weight;
+    }
+}
+
 /// <summary>Inspector-editable position, encounter table, and difficulty tuning for one fishing area.</summary>
 [Serializable]
 public sealed class FishingSpotDefinition
@@ -35,6 +51,8 @@ public sealed class FishingSpotDefinition
     [Range(.5f, 2f)] public float DifficultyMultiplier = 1f;
     [Tooltip("Optional exact fish IDs for this area. Empty preserves the existing rarity-table behavior.")]
     public List<string> FishPoolIds = new();
+    [Tooltip("Exact species weights for this area. When populated, these override FishPoolIds and RarityWeights.")]
+    public List<FishPoolEntry> FishPool = new();
     public List<FishRarityWeight> RarityWeights = new();
 
     public FishingSpotDefinition() { }
@@ -72,6 +90,22 @@ public sealed class FishingSpotDefinition
     {
         if (catalog == null || catalog.Count == 0) return null;
 
+        if (FishPool != null && FishPool.Count > 0)
+        {
+            float exactTotal = 0f;
+            for (int i = 0; i < catalog.Count; i++) exactTotal += GetExactSpeciesWeight(catalog[i]);
+            if (exactTotal > 0f)
+            {
+                float exactRoll = UnityEngine.Random.value * exactTotal;
+                for (int i = 0; i < catalog.Count; i++)
+                {
+                    FishDefinition fish = catalog[i];
+                    exactRoll -= GetExactSpeciesWeight(fish);
+                    if (exactRoll <= 0f && fish != null) return fish;
+                }
+            }
+        }
+
         float totalWeight = 0f;
         for (int i = 0; i < catalog.Count; i++) totalWeight += GetSpeciesWeight(catalog, i);
         if (totalWeight <= 0f)
@@ -97,6 +131,16 @@ public sealed class FishingSpotDefinition
             if (catalog[i] != null && GetSpeciesWeight(catalog, i) > 0f) return catalog[i];
         return null;
     }
+
+    public float GetFishWeight(string fishId)
+    {
+        if (string.IsNullOrWhiteSpace(fishId) || FishPool == null) return 0f;
+        FishPoolEntry entry = FishPool.Find(candidate => candidate != null && candidate.FishId == fishId);
+        return entry != null ? Mathf.Max(0f, entry.Weight) : 0f;
+    }
+
+    private float GetExactSpeciesWeight(FishDefinition fish)
+        => fish != null ? GetFishWeight(fish.Id) : 0f;
 
     private float GetSpeciesWeight(IReadOnlyList<FishDefinition> catalog, int index)
     {

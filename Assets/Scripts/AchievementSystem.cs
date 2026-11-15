@@ -328,13 +328,13 @@ public sealed class AchievementSystem : MonoBehaviour
         FishingUiTheme.Ensure();
         var panel = new Rect((width - 440f) * .5f, 118f, 440f, 92f);
         FishingUiTheme.DrawPanel(panel);
-        FishingUiTheme.DrawOutlinedLabel(new Rect(panel.x + 18f, panel.y + 9f, panel.width - 36f, 28f),
-            "업적 달성", FishingUiTheme.OverlaySmallCentered, FishingUiTheme.Gold);
-        FishingUiTheme.DrawOutlinedLabel(new Rect(panel.x + 18f, panel.y + 38f, panel.width - 36f, 30f),
-            activeNotice.Title, FishingUiTheme.OverlayTitle, FishingUiTheme.Cream);
+        FishingUiTheme.ColoredLabel(new Rect(panel.x + 18f, panel.y + 9f, panel.width - 36f, 28f),
+            "업적 달성", FishingUiTheme.AchievementCaption, FishingUiTheme.Gold);
+        FishingUiTheme.ColoredLabel(new Rect(panel.x + 18f, panel.y + 38f, panel.width - 36f, 30f),
+            activeNotice.Title, FishingUiTheme.AchievementTitle, FishingUiTheme.Cream);
         if (activeNotice.Reward > 0)
-            FishingUiTheme.DrawOutlinedLabel(new Rect(panel.x + 18f, panel.y + 68f, panel.width - 36f, 20f),
-                $"+{activeNotice.Reward:N0} G", FishingUiTheme.OverlaySmallCentered, FishingUiTheme.Gold);
+            FishingUiTheme.ColoredLabel(new Rect(panel.x + 18f, panel.y + 68f, panel.width - 36f, 20f),
+                $"+{activeNotice.Reward:N0} G", FishingUiTheme.AchievementReward, FishingUiTheme.Gold);
         GUI.matrix = oldMatrix;
     }
 
