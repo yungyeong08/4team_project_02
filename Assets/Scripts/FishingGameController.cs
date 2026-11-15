@@ -11,6 +11,7 @@ public sealed class FishingGameController : MonoBehaviour
     [SerializeField] private FishingOpeningSettings openingSettings = new();
     [SerializeField] private FishingAudioSettings audioSettings = new();
     [SerializeField] private DebtSettings debtSettings = new();
+    [SerializeField] private DebtConfig debtConfig;
 
     private enum State { Explore, Waiting, Reeling }
     private State state;
@@ -50,6 +51,8 @@ public sealed class FishingGameController : MonoBehaviour
     private FishingAudioDirector audioDirector;
     private FishingOpeningSequence openingSequence;
     private PlayerDebt playerDebt;
+    private AchievementSystem achievementSystem;
+    private FishingAreaProgress areaProgress;
     private Coroutine castSequence;
     private float reelUiReveal;
     private float resultUiReveal;
@@ -68,6 +71,14 @@ public sealed class FishingGameController : MonoBehaviour
     public bool IsResultVisible => resultTimer > 0f || resultDelayTimer > 0f;
     public bool IsCinematicActive => openingSequence != null && openingSequence.IsBlocking;
     public string EquippedRodId => rodInventory != null ? rodInventory.EquippedRodId : "";
+    private int InitialDebtAmount
+    {
+        get
+        {
+            if (debtConfig == null) debtConfig = Resources.Load<DebtConfig>("Data/DebtConfig");
+            return debtConfig != null ? Mathf.Max(0, debtConfig.InitialDebt) : Mathf.Max(0, debtSettings.InitialDebt);
+        }
+    }
 
     private void Awake()
     {
@@ -143,7 +154,7 @@ public sealed class FishingGameController : MonoBehaviour
         var wallet = player.AddComponent<PlayerWallet>();
         wallet.Initialize(100);
         playerDebt = player.AddComponent<PlayerDebt>();
-        playerDebt.InitializeNewGame(debtSettings.InitialDebt);
+        playerDebt.InitializeNewGame(InitialDebtAmount);
         rodInventory = player.AddComponent<FishingRodInventory>();
         rodInventory.EnsureDefaultRod();
         fishInventory = player.AddComponent<FishInventory>();
@@ -166,13 +177,24 @@ public sealed class FishingGameController : MonoBehaviour
         shopSystem.RodPurchased += earlyGameProgress.NotifyRodPurchased;
         fishMarketSystem.FishSold += (soldCount, _) => earlyGameProgress.NotifyFishSold(soldCount);
 
+        areaProgress = gameObject.AddComponent<FishingAreaProgress>();
+        areaProgress.Setup(map.FishingSpots, earlyGameProgress);
+        map.SetAreaProgress(areaProgress);
+
+        achievementSystem = gameObject.AddComponent<AchievementSystem>();
+        achievementSystem.Setup(AchievementConfig.LoadOrCreateRuntimeDefault(), wallet, fishInventory,
+            rodInventory, playerDebt, fishCatalog);
+        shopSystem.RodPurchased += achievementSystem.NotifyRodPurchased;
+        fishMarketSystem.SaleCompleted += achievementSystem.NotifySaleCompleted;
+
         saveSystem = gameObject.AddComponent<GameSaveSystem>();
         saveSystem.Setup(wallet, fishInventory, rodInventory, player.transform, map.PlayerStart, map.MapSize,
-            fishCatalog, rodCatalog, earlyGameProgress, playerDebt, debtSettings.InitialDebt);
+            fishCatalog, rodCatalog, earlyGameProgress, playerDebt, InitialDebtAmount,
+            achievementSystem, areaProgress);
 
         progressUI = gameObject.AddComponent<PlayerProgressUI>();
         progressUI.Setup(wallet, fishInventory, rodInventory, fishCatalog, rodCatalog, saveSystem, this,
-            shopSystem, fishMarketSystem, earlyGameProgress, playerDebt);
+            shopSystem, fishMarketSystem, earlyGameProgress, playerDebt, achievementSystem);
         progressUI.SetAudio(audioDirector);
         earlyGameProgress.SetUiBlocker(() =>
             IsCinematicActive ||
@@ -277,6 +299,7 @@ public sealed class FishingGameController : MonoBehaviour
                 ? map.GetNearestLockedFishingSpot(character.transform.position)
                 : null;
             UpdateRegionNotice(nearbySpot ?? lockedSpot);
+            if (nearbySpot != null) areaProgress?.NotifyAreaEntered(nearbySpot.Id);
             actionHint = nearbySpot != null
                 ? "낚시하기"
                 : lockedSpot != null ? "아직 들어갈 수 없는 지역입니다" : "";
@@ -428,6 +451,8 @@ public sealed class FishingGameController : MonoBehaviour
             earlyGameProgress?.NotifyFishCaught(caughtSpotId, usedRodId);
             if (activeFishingSpot != null) FishingWorldFx.SpawnCatchSplash(activeFishingSpot.BobberPosition);
         }
+        achievementSystem?.NotifyFishingResolved(caughtFish ? FishingResolution.Success :
+            escapedFish ? FishingResolution.Failure : FishingResolution.Cancelled, caughtFish ? currentFish : null);
         resultTimer = caughtFish || escapedFish ? 5.5f : 0f;
         resultDelayTimer = caughtFish || escapedFish ? .34f : 0f;
         resultUiReveal = 0f;

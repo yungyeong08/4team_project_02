@@ -14,12 +14,15 @@ public sealed class PixelMapBuilder : MonoBehaviour
     [SerializeField] private Color deepWaterColor = new(.08f, .31f, .61f);
 
     private readonly List<FishingSpotDefinition> runtimeSpots = new();
+    private FishingAreaProgress areaProgress;
 
     public Vector2 PlayerStart => Config.PlayerStart;
     public Vector2 MapSize => Config.MapSize;
     public IReadOnlyList<FishingSpotDefinition> FishingSpots => runtimeSpots;
     public Transform FishingShop { get; private set; }
     public Transform FishMarket { get; private set; }
+
+    public void SetAreaProgress(FishingAreaProgress progress) => areaProgress = progress;
 
     private FishingMapConfig Config
     {
@@ -72,8 +75,9 @@ public sealed class PixelMapBuilder : MonoBehaviour
     private void RefreshFishingSpots()
     {
         runtimeSpots.Clear();
-        if (Config.FishingSpots.Count > 0 && Config.FishingSpots[0] != null)
-            runtimeSpots.Add(Config.FishingSpots[0]);
+        for (int i = 0; i < Config.FishingSpots.Count; i++)
+            if (Config.FishingSpots[i] != null && Config.FishingSpots[i].Enabled)
+                runtimeSpots.Add(Config.FishingSpots[i]);
     }
 
     private Transform FindChildByName(string objectName)
@@ -94,6 +98,7 @@ public sealed class PixelMapBuilder : MonoBehaviour
         for (int i = 0; i < runtimeSpots.Count; i++)
         {
             FishingSpotDefinition spot = runtimeSpots[i];
+            if (areaProgress != null && !areaProgress.IsUnlocked(spot.Id)) continue;
             float distance = Vector2.Distance(playerPosition, spot.ShorePosition);
             if (distance <= spot.InteractionRange && distance < nearestDistance)
             {
@@ -111,10 +116,11 @@ public sealed class PixelMapBuilder : MonoBehaviour
 
     public FishingSpotDefinition GetNearestLockedFishingSpot(Vector2 playerPosition)
     {
-        for (int i = 1; i < runtimeSpots.Count; i++)
+        for (int i = 0; i < runtimeSpots.Count; i++)
         {
             FishingSpotDefinition spot = runtimeSpots[i];
-            if (spot != null && Vector2.Distance(playerPosition, spot.ShorePosition) <= spot.InteractionRange + .7f)
+            if (spot != null && areaProgress != null && !areaProgress.IsUnlocked(spot.Id) &&
+                Vector2.Distance(playerPosition, spot.ShorePosition) <= spot.InteractionRange + .7f)
                 return spot;
         }
         return null;

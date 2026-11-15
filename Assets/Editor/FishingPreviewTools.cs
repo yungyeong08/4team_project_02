@@ -8,11 +8,13 @@ public static class FishingPreviewTools
 {
     private const string FishingScenePath = "Assets/Scenes/FishingDemo.unity";
     private const string SmokeTestSessionKey = "Fishing.PlayModeSmokeTest";
-    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.EarlyGameV4";
+    private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.ContentExpansionV1";
 
     private const string MapConfigPath = "Assets/Resources/Data/FishingMapConfig.asset";
     private const string BalanceConfigPath = "Assets/Resources/Data/FishingBalanceConfig.asset";
     private const string QuestConfigPath = "Assets/Resources/Data/EarlyGameQuestConfig.asset";
+    private const string AchievementConfigPath = "Assets/Resources/Data/AchievementConfig.asset";
+    private const string DebtConfigPath = "Assets/Resources/Data/DebtConfig.asset";
 
     [InitializeOnLoadMethod]
     private static void EnsureDataAssetsAfterCompile()
@@ -30,6 +32,8 @@ public static class FishingPreviewTools
         EnsureMapConfig();
         EnsureBalanceConfig();
         EnsureQuestConfig();
+        EnsureAchievementConfig();
+        EnsureDebtConfig();
         if (!SessionState.GetBool(ProgressionValidationSessionKey, false))
         {
             ValidateProgressionSystems();
@@ -64,10 +68,16 @@ public static class FishingPreviewTools
     {
         FishingBalanceConfig balance = EnsureBalanceConfig();
         EarlyGameQuestConfig questConfig = EnsureQuestConfig();
+        AchievementConfig achievementConfig = EnsureAchievementConfig();
+        DebtConfig debtConfig = EnsureDebtConfig();
         if (balance.Fish == null || balance.Fish.Count == 0) throw new System.InvalidOperationException("Fish catalog is empty.");
         if (balance.Rods == null || balance.Rods.Count < 2) throw new System.InvalidOperationException("Rod catalog needs a default rod and purchasable upgrades.");
         if (questConfig.Quests == null || questConfig.Quests.Count != 6)
             throw new System.InvalidOperationException("The first-area quest line must contain six quests.");
+        if (achievementConfig.Achievements == null || achievementConfig.Achievements.Count != 27)
+            throw new System.InvalidOperationException("Achievement config must contain the requested 27 achievements.");
+        if (debtConfig.InitialDebt != 30000)
+            throw new System.InvalidOperationException("Initial debt must be configured to 30,000G.");
         EarlyQuestDefinition firstCatchQuest = questConfig.Quests.Find(quest => quest.Id == "first_catch");
         EarlyQuestDefinition firstSaleQuest = questConfig.Quests.Find(quest => quest.Id == "first_sale");
         EarlyQuestDefinition rodUpgradeQuest = questConfig.Quests.Find(quest => quest.Id == "rod_upgrade");
@@ -189,7 +199,69 @@ public static class FishingPreviewTools
             Object.DestroyImmediate(validationObject);
         }
 
-        Debug.Log("PROGRESSION_VALIDATION_OK: new-fish discovery, rod progression, six-quest chain, debt events, rewards, and save-data JSON verified.");
+        ValidateContentExpansion(balance, achievementConfig, debtConfig);
+
+        Debug.Log("PROGRESSION_VALIDATION_OK: fishing, sales, rods, 30,000G debt, 27 achievements, areas, rewards, and save data verified.");
+    }
+
+    private static void ValidateContentExpansion(FishingBalanceConfig balance, AchievementConfig achievementConfig, DebtConfig debtConfig)
+    {
+        var go = new GameObject("Content Expansion Validation (Temporary)");
+        try
+        {
+            PlayerWallet wallet = go.AddComponent<PlayerWallet>();
+            wallet.Initialize(40000);
+            FishInventory fish = go.AddComponent<FishInventory>();
+            FishingRodInventory rods = go.AddComponent<FishingRodInventory>();
+            rods.EnsureDefaultRod();
+            PlayerDebt debt = go.AddComponent<PlayerDebt>();
+            debt.InitializeNewGame(debtConfig.InitialDebt);
+            int fullEvents = 0;
+            int clearEvents = 0;
+            debt.DebtFullyRepaid += () => fullEvents++;
+            debt.GameCleared += () => clearEvents++;
+
+            AchievementSystem achievements = go.AddComponent<AchievementSystem>();
+            achievements.Setup(achievementConfig, wallet, fish, rods, debt, balance.Fish);
+            fish.Add(balance.Fish[0].Id);
+            achievements.NotifyFishingResolved(FishingResolution.Success, balance.Fish[0]);
+            achievements.NotifySaleCompleted(1, 5000, false);
+            if (!rods.TryAddAndEquip("sturdy_rod"))
+                throw new System.InvalidOperationException("Additional rod setup failed.");
+            achievements.NotifyRodPurchased("sturdy_rod");
+            int paid = debt.TryRepay(wallet, 999999);
+            if (paid != debtConfig.InitialDebt || debt.RemainingDebt != 0 || debt.LifetimeRepaid != debtConfig.InitialDebt ||
+                !debt.IsFullyRepaid || !debt.IsGameCleared || fullEvents != 1 || clearEvents != 1)
+                throw new System.InvalidOperationException("Debt transaction or one-time clear events failed.");
+            if (!achievements.GetState("first_catch").Completed || !achievements.GetState("first_sale").Completed ||
+                !achievements.GetState("first_debt_payment").Completed || !achievements.GetState("debt_free").Completed ||
+                !achievements.GetState("new_life").Completed)
+                throw new System.InvalidOperationException("Event-driven achievement completion failed.");
+
+            AchievementSaveData achievementRoundTrip = JsonUtility.FromJson<AchievementSaveData>(
+                JsonUtility.ToJson(achievements.CreateSnapshot()));
+            if (achievementRoundTrip == null || achievementRoundTrip.States.Count != 27 ||
+                achievementRoundTrip.Metrics.TotalSaleGold != 5000)
+                throw new System.InvalidOperationException("Achievement save round trip failed.");
+
+            var areaDefinitions = new System.Collections.Generic.List<FishingSpotDefinition>
+            {
+                new() { Id = "first", Enabled = true, InitiallyUnlocked = true },
+                new() { Id = "future", Enabled = true, InitiallyUnlocked = false, RequiredQuestId = "future_quest" }
+            };
+            FishingAreaProgress areas = go.AddComponent<FishingAreaProgress>();
+            areas.Setup(areaDefinitions, null);
+            if (!areas.IsUnlocked("first") || areas.IsUnlocked("future") || !areas.TryUnlock("future"))
+                throw new System.InvalidOperationException("Area lock and unlock state failed.");
+            FishingAreaSaveData areaRoundTrip = JsonUtility.FromJson<FishingAreaSaveData>(JsonUtility.ToJson(areas.CreateSnapshot()));
+            areas.ResetProgress();
+            areas.Restore(areaRoundTrip);
+            if (!areas.IsUnlocked("future")) throw new System.InvalidOperationException("Area save restore failed.");
+        }
+        finally
+        {
+            Object.DestroyImmediate(go);
+        }
     }
 
     public static void RunPlayModeSmokeTest()
@@ -234,12 +306,18 @@ public static class FishingPreviewTools
             GameSaveSystem saveSystem = Object.FindFirstObjectByType<GameSaveSystem>();
             EarlyGameQuestSystem earlyGameQuests = Object.FindFirstObjectByType<EarlyGameQuestSystem>();
             PlayerDebt playerDebt = Object.FindFirstObjectByType<PlayerDebt>();
+            AchievementSystem achievements = Object.FindFirstObjectByType<AchievementSystem>();
+            FishingAreaProgress areaProgress = Object.FindFirstObjectByType<FishingAreaProgress>();
+            PlayerWallet wallet = Object.FindFirstObjectByType<PlayerWallet>();
             if (controller == null || shop == null || market == null || fishInventory == null || rodInventory == null ||
-                progressUi == null || saveSystem == null || earlyGameQuests == null || playerDebt == null)
+                progressUi == null || saveSystem == null || earlyGameQuests == null || playerDebt == null ||
+                achievements == null || areaProgress == null || wallet == null)
                 throw new System.InvalidOperationException("One or more progression systems were not created at runtime.");
             if (!rodInventory.Owns(FishingRodCatalog.DefaultRodId) || string.IsNullOrWhiteSpace(rodInventory.EquippedRodId) ||
                 !rodInventory.Owns(rodInventory.EquippedRodId))
                 throw new System.InvalidOperationException("The player does not have a valid equipped fishing rod.");
+            if (Application.isBatchMode && !saveSystem.ResetGame())
+                throw new System.InvalidOperationException("The isolated smoke-test save could not be reset.");
 
             Vector3 originalPosition = player.transform.position;
             for (int i = 0; i < builder.FishingSpots.Count; i++)
@@ -263,7 +341,42 @@ public static class FishingPreviewTools
             market.CloseShop();
             player.transform.position = originalPosition;
 
-            Debug.Log("PLAYMODE_SMOKE_OK: first-lake-only map, player/UI/progression components, both shops, and equipped rod verified.");
+            if (Application.isBatchMode)
+            {
+                // Run one deterministic controller cycle in the isolated validation project.
+                FishingSpotDefinition firstSpot = builder.FishingSpots[0];
+                System.Reflection.BindingFlags flags = System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic;
+                System.Reflection.MethodInfo cast = typeof(FishingGameController).GetMethod("Cast", flags);
+                System.Reflection.MethodInfo bite = typeof(FishingGameController).GetMethod("Bite", flags);
+                System.Reflection.MethodInfo reset = typeof(FishingGameController).GetMethod("ResetFishing", flags);
+                System.Reflection.FieldInfo progress = typeof(FishingGameController).GetField("progress", flags);
+                if (cast == null || bite == null || reset == null || progress == null)
+                    throw new System.InvalidOperationException("Fishing cycle test hooks were not found.");
+                int caughtBefore = fishInventory.TotalLifetimeCaught;
+                cast.Invoke(controller, new object[] { firstSpot });
+                bite.Invoke(controller, null);
+                progress.SetValue(controller, 1f);
+                reset.Invoke(controller, new object[] { "validation success" });
+                if (fishInventory.TotalLifetimeCaught != caughtBefore + 1 || !achievements.GetState("first_catch").Completed)
+                    throw new System.InvalidOperationException("Fishing success cycle did not update inventory and achievements once.");
+
+                string caughtFishId = null;
+                FishingBalanceConfig runtimeBalance = FishingBalanceConfig.LoadOrCreateRuntimeDefault();
+                foreach (FishDefinition fishDefinition in runtimeBalance.Fish)
+                    if (fishInventory.GetCount(fishDefinition.Id) > 0) { caughtFishId = fishDefinition.Id; break; }
+                if (string.IsNullOrEmpty(caughtFishId) || !market.SellFish(caughtFishId) ||
+                    !achievements.GetState("first_sale").Completed)
+                    throw new System.InvalidOperationException("Catch-to-sale transaction failed.");
+
+                wallet.AddMoney(10000);
+                if (!shop.TryPurchase("sturdy_rod") || !achievements.GetState("buy_rod_1").Completed)
+                    throw new System.InvalidOperationException("Rod purchase transaction failed.");
+                if (playerDebt.TryRepay(wallet, 100) != 100 || !achievements.GetState("first_debt_payment").Completed)
+                    throw new System.InvalidOperationException("Debt repayment transaction failed.");
+                if (!saveSystem.Save()) throw new System.InvalidOperationException("Runtime save failed.");
+            }
+
+            Debug.Log("PLAYMODE_SMOKE_OK: map, fishing success, inventory, sale, rod purchase, debt repayment, achievements, and save verified.");
             SessionState.SetBool(SmokeTestSessionKey, false);
             FinishSmokeTest(0);
         }
@@ -401,6 +514,42 @@ public static class FishingPreviewTools
         AssetDatabase.CreateAsset(config, QuestConfigPath);
         AssetDatabase.SaveAssets();
         Debug.Log("Created EarlyGameQuestConfig with the first-lake quest line.");
+        return config;
+    }
+
+    private static AchievementConfig EnsureAchievementConfig()
+    {
+        AchievementConfig config = AssetDatabase.LoadAssetAtPath<AchievementConfig>(AchievementConfigPath);
+        if (config != null && config.Achievements != null && config.Achievements.Count == 27)
+        {
+            AchievementDefinition rare = config.Achievements.Find(item => item.Id == "first_rare");
+            AchievementDefinition legendary = config.Achievements.Find(item => item.Id == "first_legendary");
+            if (rare != null && legendary != null && rare.Target == 1 && rare.RequiredRarity == FishRarity.Rare &&
+                legendary.Target == 1 && legendary.RequiredRarity == FishRarity.Legendary) return config;
+            config.ApplyDefaults();
+            EditorUtility.SetDirty(config);
+            AssetDatabase.SaveAssets();
+            return config;
+        }
+        if (AssetDatabase.LoadMainAssetAtPath(AchievementConfigPath) != null) AssetDatabase.DeleteAsset(AchievementConfigPath);
+        config = ScriptableObject.CreateInstance<AchievementConfig>();
+        config.ApplyDefaults();
+        AssetDatabase.CreateAsset(config, AchievementConfigPath);
+        AssetDatabase.SaveAssets();
+        return config;
+    }
+
+    private static DebtConfig EnsureDebtConfig()
+    {
+        DebtConfig config = AssetDatabase.LoadAssetAtPath<DebtConfig>(DebtConfigPath);
+        if (config == null)
+        {
+            if (AssetDatabase.LoadMainAssetAtPath(DebtConfigPath) != null) AssetDatabase.DeleteAsset(DebtConfigPath);
+            config = ScriptableObject.CreateInstance<DebtConfig>();
+            config.InitialDebt = 30000;
+            AssetDatabase.CreateAsset(config, DebtConfigPath);
+            AssetDatabase.SaveAssets();
+        }
         return config;
     }
 

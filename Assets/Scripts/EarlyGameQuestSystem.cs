@@ -22,8 +22,11 @@ public enum EarlyQuestGoal
     SellFish,
     PurchaseRod,
     CatchWithUpgradedRod,
-    RepayDebt
+    RepayDebt,
+    TalkToNpc
 }
+
+public enum QuestType { Main, Side }
 
 [Serializable]
 public sealed class EarlyQuestDefinition
@@ -36,6 +39,10 @@ public sealed class EarlyQuestDefinition
     public int RewardGold;
     public string RequiredId;
     public string NextQuestId;
+    public QuestType Type = QuestType.Main;
+    [Tooltip("Optional NPC ID used by future dialogue and TalkToNpc objectives.")]
+    public string QuestGiverNpcId;
+    public bool AutoAccept = true;
 
     public EarlyQuestDefinition(string id, string title, string description, EarlyQuestGoal goal,
         int targetAmount, int rewardGold, string requiredId, string nextQuestId)
@@ -105,6 +112,7 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
 
     public event Action ProgressChanged;
     public event Action<string, int> QuestCompleted;
+    public event Action<string> QuestIdCompleted;
     public event Action TutorialAdvanced;
 
     public EarlyTutorialStep TutorialStep => tutorialStep;
@@ -215,6 +223,26 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
         AddQuestProgress(amount);
     }
 
+    /// <summary>Future NPC dialogue hook. Existing quests do not call or require it.</summary>
+    public void NotifyNpcTalked(string npcId)
+    {
+        EarlyQuestDefinition quest = ActiveQuest;
+        if (quest == null || quest.Goal != EarlyQuestGoal.TalkToNpc || string.IsNullOrWhiteSpace(npcId)) return;
+        string requiredNpc = !string.IsNullOrWhiteSpace(quest.RequiredId) ? quest.RequiredId : quest.QuestGiverNpcId;
+        if (string.IsNullOrWhiteSpace(requiredNpc) || requiredNpc == npcId) AddQuestProgress(1);
+    }
+
+    /// <summary>Acceptance hook for future NPC/side-quest UI. Current main quest remains auto-accepted.</summary>
+    public bool TryAcceptQuest(string questId)
+    {
+        int index = quests.FindIndex(candidate => candidate != null && candidate.Id == questId);
+        if (index < 0 || completedQuestIds.Contains(questId) || activeQuestIndex >= 0) return false;
+        activeQuestIndex = index;
+        questProgress = 0;
+        ProgressChanged?.Invoke();
+        return true;
+    }
+
     private void AddQuestProgress(int amount)
     {
         EarlyQuestDefinition quest = ActiveQuest;
@@ -231,6 +259,7 @@ public sealed class EarlyGameQuestSystem : MonoBehaviour
         if (!completedQuestIds.Contains(completed.Id)) completedQuestIds.Add(completed.Id);
         wallet?.AddMoney(completed.RewardGold);
         QuestCompleted?.Invoke(completed.Title, completed.RewardGold);
+        QuestIdCompleted?.Invoke(completed.Id);
 
         int nextIndex = string.IsNullOrWhiteSpace(completed.NextQuestId)
             ? -1

@@ -6,7 +6,7 @@ using UnityEngine;
 [Serializable]
 public sealed class FishingGameSaveData
 {
-    public const int CurrentVersion = 7;
+    public const int CurrentVersion = 8;
     public int Version = CurrentVersion;
     public int Money = 100;
     public List<FishInventory.FishProgress> FishProgress = new();
@@ -15,8 +15,13 @@ public sealed class FishingGameSaveData
     public float PlayerX;
     public float PlayerY;
     public EarlyGameProgressSaveData EarlyGameProgress = new();
-    public int DebtRemaining = 5000;
+    public int InitialDebt = 30000;
+    public int DebtRemaining = 30000;
     public int LifetimeDebtRepaid;
+    public bool DebtFullyRepaid;
+    public bool GameCleared;
+    public AchievementSaveData AchievementProgress = new();
+    public FishingAreaSaveData AreaProgress = new();
 }
 
 /// <summary>Persists the existing wallet and inventory components as one versioned JSON save.</summary>
@@ -30,6 +35,8 @@ public sealed class GameSaveSystem : MonoBehaviour
     private FishingRodInventory rodInventory;
     private EarlyGameQuestSystem earlyGameProgress;
     private PlayerDebt playerDebt;
+    private AchievementSystem achievementSystem;
+    private FishingAreaProgress areaProgress;
     private Transform player;
     private Vector2 defaultPlayerPosition;
     private Vector2 mapSize;
@@ -57,7 +64,9 @@ public sealed class GameSaveSystem : MonoBehaviour
         IReadOnlyList<FishingRodDefinition> rodCatalog,
         EarlyGameQuestSystem questSystem,
         PlayerDebt debt,
-        int newGameDebtAmount)
+        int newGameDebtAmount,
+        AchievementSystem achievements = null,
+        FishingAreaProgress fishingAreas = null)
     {
         wallet = playerWallet;
         fishInventory = playerFishInventory;
@@ -65,6 +74,8 @@ public sealed class GameSaveSystem : MonoBehaviour
         player = playerTransform;
         earlyGameProgress = questSystem;
         playerDebt = debt;
+        achievementSystem = achievements;
+        areaProgress = fishingAreas;
         defaultDebtAmount = Mathf.Max(0, newGameDebtAmount);
         defaultPlayerPosition = newGamePosition;
         mapSize = worldSize;
@@ -86,6 +97,8 @@ public sealed class GameSaveSystem : MonoBehaviour
         rodInventory.InventoryChanged += MarkDirty;
         if (earlyGameProgress != null) earlyGameProgress.ProgressChanged += MarkDirty;
         if (playerDebt != null) playerDebt.DebtChanged += MarkDirty;
+        if (achievementSystem != null) achievementSystem.ProgressChanged += MarkDirty;
+        if (areaProgress != null) areaProgress.ProgressChanged += MarkDirty;
         initialized = true;
     }
 
@@ -120,8 +133,13 @@ public sealed class GameSaveSystem : MonoBehaviour
                 PlayerX = player.position.x,
                 PlayerY = player.position.y,
                 EarlyGameProgress = earlyGameProgress != null ? earlyGameProgress.CreateSnapshot() : new EarlyGameProgressSaveData(),
+                InitialDebt = playerDebt != null ? playerDebt.InitialDebt : defaultDebtAmount,
                 DebtRemaining = playerDebt != null ? playerDebt.RemainingDebt : defaultDebtAmount,
-                LifetimeDebtRepaid = playerDebt != null ? playerDebt.LifetimeRepaid : 0
+                LifetimeDebtRepaid = playerDebt != null ? playerDebt.LifetimeRepaid : 0,
+                DebtFullyRepaid = playerDebt != null && playerDebt.IsFullyRepaid,
+                GameCleared = playerDebt != null && playerDebt.IsGameCleared,
+                AchievementProgress = achievementSystem != null ? achievementSystem.CreateSnapshot() : new AchievementSaveData(),
+                AreaProgress = areaProgress != null ? areaProgress.CreateSnapshot() : new FishingAreaSaveData()
             };
 
             string tempPath = SavePath + ".tmp";
@@ -176,8 +194,16 @@ public sealed class GameSaveSystem : MonoBehaviour
             rodInventory.Restore(safeRodIds, safeEquippedRod);
             if (playerDebt != null)
             {
-                if (data.Version >= 7) playerDebt.Restore(data.DebtRemaining, data.LifetimeDebtRepaid);
-                else playerDebt.Restore(defaultDebtAmount, 0);
+                if (data.Version >= 8)
+                    playerDebt.Restore(data.InitialDebt > 0 ? data.InitialDebt : defaultDebtAmount,
+                        data.DebtRemaining, data.LifetimeDebtRepaid, data.DebtFullyRepaid, data.GameCleared);
+                else if (data.Version >= 7)
+                {
+                    int migratedRepaid = Mathf.Clamp(data.LifetimeDebtRepaid, 0, defaultDebtAmount);
+                    playerDebt.Restore(defaultDebtAmount, defaultDebtAmount - migratedRepaid, migratedRepaid,
+                        migratedRepaid >= defaultDebtAmount, migratedRepaid >= defaultDebtAmount);
+                }
+                else playerDebt.Restore(defaultDebtAmount, defaultDebtAmount, 0, false, false);
             }
 
             bool requiresStarterPosition = data.Version < 6 ||
@@ -232,6 +258,8 @@ public sealed class GameSaveSystem : MonoBehaviour
                 data.EarlyGameProgress.NextRegionReady = false;
             }
             earlyGameProgress?.Restore(data.EarlyGameProgress);
+            areaProgress?.Restore(data.AreaProgress);
+            achievementSystem?.Restore(data.AchievementProgress);
             // Persist the migrated starter position shortly after an older save loads,
             // otherwise the same legacy position would be migrated on every launch.
             dirty = requiresStarterPosition || data.Version < FishingGameSaveData.CurrentVersion;
@@ -288,6 +316,8 @@ public sealed class GameSaveSystem : MonoBehaviour
         fishInventory.Restore(null);
         rodInventory.Restore(null, FishingRodCatalog.DefaultRodId);
         playerDebt?.InitializeNewGame(defaultDebtAmount);
+        areaProgress?.ResetProgress();
+        achievementSystem?.ResetProgress();
         if (player != null) player.position = defaultPlayerPosition;
         earlyGameProgress?.ResetProgress();
         dirty = false;
@@ -337,5 +367,7 @@ public sealed class GameSaveSystem : MonoBehaviour
         if (rodInventory != null) rodInventory.InventoryChanged -= MarkDirty;
         if (earlyGameProgress != null) earlyGameProgress.ProgressChanged -= MarkDirty;
         if (playerDebt != null) playerDebt.DebtChanged -= MarkDirty;
+        if (achievementSystem != null) achievementSystem.ProgressChanged -= MarkDirty;
+        if (areaProgress != null) areaProgress.ProgressChanged -= MarkDirty;
     }
 }

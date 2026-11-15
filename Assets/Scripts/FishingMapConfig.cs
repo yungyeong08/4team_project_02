@@ -115,7 +115,7 @@ public sealed class FishingMapConfig : ScriptableObject
     {
         return new List<FishingSpotDefinition>
         {
-            new(
+            new FishingSpotDefinition(
                 "village_pond", "마을 연못 · 초급",
                 new Vector2(-3.5f, 1.6f), new Vector2(7f, 5.5f),
                 new Vector2(.45f, -.3f), new Vector2(-.4f, -.3f),
@@ -124,8 +124,12 @@ public sealed class FishingMapConfig : ScriptableObject
                 new FishRarityWeight(FishRarity.Uncommon, 25f),
                 new FishRarityWeight(FishRarity.Rare, 5f),
                 new FishRarityWeight(FishRarity.Epic, 0f),
-                new FishRarityWeight(FishRarity.Legendary, 0f)),
-            new(
+                new FishRarityWeight(FishRarity.Legendary, 0f))
+            {
+                Enabled = true,
+                InitiallyUnlocked = true
+            },
+            new FishingSpotDefinition(
                 "forest_lake", "솔바람 호수 · 중급",
                 new Vector2(10f, 1f), new Vector2(10f, 7f),
                 new Vector2(4.65f, 1f), new Vector2(6.15f, 1f),
@@ -134,8 +138,12 @@ public sealed class FishingMapConfig : ScriptableObject
                 new FishRarityWeight(FishRarity.Uncommon, 45f),
                 new FishRarityWeight(FishRarity.Rare, 32f),
                 new FishRarityWeight(FishRarity.Epic, 8f),
-                new FishRarityWeight(FishRarity.Legendary, 0f)),
-            new(
+                new FishRarityWeight(FishRarity.Legendary, 0f))
+            {
+                Enabled = false,
+                InitiallyUnlocked = false
+            },
+            new FishingSpotDefinition(
                 "ancient_lake", "고요한 심연 · 고급",
                 new Vector2(-10f, 8.5f), new Vector2(11f, 7f),
                 new Vector2(-10f, 4.65f), new Vector2(-10f, 6.15f),
@@ -145,6 +153,10 @@ public sealed class FishingMapConfig : ScriptableObject
                 new FishRarityWeight(FishRarity.Rare, 43f),
                 new FishRarityWeight(FishRarity.Epic, 38f),
                 new FishRarityWeight(FishRarity.Legendary, 7f))
+            {
+                Enabled = false,
+                InitiallyUnlocked = false
+            }
         };
     }
 

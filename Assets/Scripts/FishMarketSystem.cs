@@ -28,6 +28,7 @@ public sealed class FishMarketSystem : MonoBehaviour
     public string StatusMessage => statusMessage;
     public int TotalSaleValue => CalculateTotalSaleValue();
     public event System.Action<int, int> FishSold;
+    public event System.Action<int, int, bool> SaleCompleted;
 
     public void Setup(
         PixelCharacter playerCharacter, Transform target, PlayerWallet playerWallet,
@@ -117,6 +118,7 @@ public sealed class FishMarketSystem : MonoBehaviour
         audioDirector?.PlaySell(false);
         statusMessage = $"{fish.DisplayName} {soldCount}마리 판매 완료!  +{earned:N0} G";
         FishSold?.Invoke(soldCount, earned);
+        SaleCompleted?.Invoke(soldCount, earned, false);
         return true;
     }
 
@@ -148,6 +150,7 @@ public sealed class FishMarketSystem : MonoBehaviour
         audioDirector?.PlaySell(true);
         statusMessage = $"모든 물고기 판매 완료!  +{earned:N0} G";
         FishSold?.Invoke(totalSold, earned);
+        SaleCompleted?.Invoke(totalSold, earned, true);
         return earned;
     }
 

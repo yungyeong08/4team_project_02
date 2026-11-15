@@ -21,13 +21,23 @@ public sealed class FishingSpotDefinition
 {
     public string Id;
     public string DisplayName;
+    [Tooltip("Only enabled areas are built and checked during play.")]
+    public bool Enabled = true;
+    public bool InitiallyUnlocked = true;
+    [Tooltip("Optional completed quest ID required to unlock this area. Leave empty to keep it manually unlockable.")]
+    public string RequiredQuestId;
+    public Vector2 PlayerSpawnPoint;
     public Vector2 WaterCenter;
     public Vector2 WaterSize;
     public Vector2 ShorePosition;
     public Vector2 BobberPosition;
     [Min(.5f)] public float InteractionRange = 1.6f;
     [Range(.5f, 2f)] public float DifficultyMultiplier = 1f;
+    [Tooltip("Optional exact fish IDs for this area. Empty preserves the existing rarity-table behavior.")]
+    public List<string> FishPoolIds = new();
     public List<FishRarityWeight> RarityWeights = new();
+
+    public FishingSpotDefinition() { }
 
     public FishingSpotDefinition(
         string id,
@@ -48,6 +58,7 @@ public sealed class FishingSpotDefinition
         BobberPosition = bobberPosition;
         InteractionRange = interactionRange;
         DifficultyMultiplier = difficultyMultiplier;
+        PlayerSpawnPoint = shorePosition;
         RarityWeights = new List<FishRarityWeight>(rarityWeights);
     }
 
@@ -69,7 +80,8 @@ public sealed class FishingSpotDefinition
             for (int offset = 0; offset < catalog.Count; offset++)
             {
                 FishDefinition fallback = catalog[(start + offset) % catalog.Count];
-                if (fallback != null) return fallback;
+                if (fallback != null && (FishPoolIds == null || FishPoolIds.Count == 0 || FishPoolIds.Contains(fallback.Id)))
+                    return fallback;
             }
             return null;
         }
@@ -90,9 +102,11 @@ public sealed class FishingSpotDefinition
     {
         FishDefinition fish = catalog[index];
         if (fish == null) return 0f;
+        if (FishPoolIds != null && FishPoolIds.Count > 0 && !FishPoolIds.Contains(fish.Id)) return 0f;
         int speciesInRarity = 0;
         for (int i = 0; i < catalog.Count; i++)
-            if (catalog[i] != null && catalog[i].Rarity == fish.Rarity) speciesInRarity++;
+            if (catalog[i] != null && catalog[i].Rarity == fish.Rarity &&
+                (FishPoolIds == null || FishPoolIds.Count == 0 || FishPoolIds.Contains(catalog[i].Id))) speciesInRarity++;
 
         return speciesInRarity > 0 ? GetWeight(fish.Rarity) / speciesInRarity : 0f;
     }

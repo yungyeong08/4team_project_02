@@ -19,12 +19,17 @@ MonoBehaviour:
   FishingSpots:
   - Id: village_pond
     DisplayName: "\uB9C8\uC744 \uC5F0\uBABB \xB7 \uCD08\uAE09"
+    Enabled: 1
+    InitiallyUnlocked: 1
+    RequiredQuestId:
+    PlayerSpawnPoint: {x: 0.45, y: -0.3}
     WaterCenter: {x: -3.5, y: 1.6}
     WaterSize: {x: 7, y: 5.5}
     ShorePosition: {x: 0.45, y: -0.3}
     BobberPosition: {x: -0.4, y: -0.3}
     InteractionRange: 1.65
     DifficultyMultiplier: 0.9
+    FishPoolIds: []
     RarityWeights:
     - Rarity: 0
       Weight: 70
@@ -38,12 +43,17 @@ MonoBehaviour:
       Weight: 0
   - Id: forest_lake
     DisplayName: "\uC194\uBC14\uB78C \uD638\uC218 \xB7 \uC911\uAE09"
+    Enabled: 0
+    InitiallyUnlocked: 0
+    RequiredQuestId:
+    PlayerSpawnPoint: {x: 4.65, y: 1}
     WaterCenter: {x: 10, y: 1}
     WaterSize: {x: 10, y: 7}
     ShorePosition: {x: 4.65, y: 1}
     BobberPosition: {x: 6.15, y: 1}
     InteractionRange: 1.7
     DifficultyMultiplier: 1.08
+    FishPoolIds: []
     RarityWeights:
     - Rarity: 0
       Weight: 15
@@ -57,12 +67,17 @@ MonoBehaviour:
       Weight: 0
   - Id: ancient_lake
     DisplayName: "\uACE0\uC694\uD55C \uC2EC\uC5F0 \xB7 \uACE0\uAE09"
+    Enabled: 0
+    InitiallyUnlocked: 0
+    RequiredQuestId:
+    PlayerSpawnPoint: {x: -10, y: 4.65}
     WaterCenter: {x: -10, y: 8.5}
     WaterSize: {x: 11, y: 7}
     ShorePosition: {x: -10, y: 4.65}
     BobberPosition: {x: -10, y: 6.15}
     InteractionRange: 1.75
     DifficultyMultiplier: 1.25
+    FishPoolIds: []
     RarityWeights:
     - Rarity: 0
       Weight: 0

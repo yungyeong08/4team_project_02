@@ -5,7 +5,7 @@ using UnityEngine;
 [DefaultExecutionOrder(-1000)]
 public sealed class PlayerProgressUI : MonoBehaviour
 {
-    private enum WindowMode { None, Inventory, Codex, Pause, MainMenu, ResetConfirm }
+    private enum WindowMode { None, Inventory, Codex, Achievements, Pause, MainMenu, ResetConfirm }
     private enum InventoryTab { Fish, Rods }
 
     private PlayerWallet wallet;
@@ -19,6 +19,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private FishMarketSystem market;
     private EarlyGameQuestSystem earlyGameProgress;
     private PlayerDebt playerDebt;
+    private AchievementSystem achievementSystem;
     private WindowMode windowMode;
     private InventoryTab inventoryTab;
     private Vector2 scrollPosition;
@@ -29,6 +30,8 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private FishingAudioDirector audioDirector;
     private float modalReveal;
     private bool modalClosing;
+    private string repaymentInput = "1000";
+    private float gameClearNoticeTimer;
 
     public bool IsBlockingGameplay => windowMode != WindowMode.None;
     public bool IsInventoryOpen => windowMode == WindowMode.Inventory;
@@ -46,7 +49,8 @@ public sealed class PlayerProgressUI : MonoBehaviour
         FishingShopSystem shopSystem,
         FishMarketSystem marketSystem,
         EarlyGameQuestSystem questSystem,
-        PlayerDebt debt)
+        PlayerDebt debt,
+        AchievementSystem achievements = null)
     {
         wallet = playerWallet;
         fishInventory = playerFishInventory;
@@ -59,8 +63,10 @@ public sealed class PlayerProgressUI : MonoBehaviour
         market = marketSystem;
         earlyGameProgress = questSystem;
         playerDebt = debt;
+        achievementSystem = achievements;
         lastBalance = wallet != null ? wallet.Balance : 0;
         if (wallet != null) wallet.BalanceChanged += OnBalanceChanged;
+        if (playerDebt != null) playerDebt.GameCleared += OnGameCleared;
     }
 
     public void SetAudio(FishingAudioDirector audio) => audioDirector = audio;
@@ -74,6 +80,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void Update()
     {
+        if (gameClearNoticeTimer > 0f) gameClearNoticeTimer -= Time.unscaledDeltaTime;
         if (balanceFeedbackTimer > 0f) balanceFeedbackTimer -= Time.unscaledDeltaTime;
         if (windowMode != WindowMode.None)
         {
@@ -93,6 +100,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Escape))
         {
             if (windowMode == WindowMode.ResetConfirm) OpenWindow(WindowMode.Pause);
+            else if (windowMode == WindowMode.Achievements) OpenWindow(WindowMode.Pause);
             else if (windowMode != WindowMode.None) CloseWindow();
             else if (!externalWindowOpen && !fishingActive) OpenWindow(WindowMode.Pause);
             return;
@@ -137,7 +145,10 @@ public sealed class PlayerProgressUI : MonoBehaviour
     private void OnDestroy()
     {
         if (wallet != null) wallet.BalanceChanged -= OnBalanceChanged;
+        if (playerDebt != null) playerDebt.GameCleared -= OnGameCleared;
     }
+
+    private void OnGameCleared() => gameClearNoticeTimer = 4.5f;
 
     private void OnGUI()
     {
@@ -152,6 +163,7 @@ public sealed class PlayerProgressUI : MonoBehaviour
         if (windowMode == WindowMode.None)
         {
             DrawShortcutHint(screenWidth, screenHeight);
+            if (gameClearNoticeTimer > 0f) DrawGameClearNotice(screenWidth, screenHeight);
             GUI.matrix = previousMatrix;
             return;
         }
@@ -163,11 +175,13 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
         if (windowMode == WindowMode.Inventory) DrawInventory(screenWidth, screenHeight);
         else if (windowMode == WindowMode.Codex) DrawCodex(screenWidth, screenHeight);
+        else if (windowMode == WindowMode.Achievements) DrawAchievements(screenWidth, screenHeight);
         else if (windowMode == WindowMode.Pause) DrawPause(screenWidth, screenHeight);
         else if (windowMode == WindowMode.MainMenu) DrawMainMenu(screenWidth, screenHeight);
         else DrawResetConfirm(screenWidth, screenHeight);
 
         GUI.color = previousColor;
+        if (gameClearNoticeTimer > 0f) DrawGameClearNotice(screenWidth, screenHeight);
         GUI.matrix = previousMatrix;
     }
 
@@ -430,11 +444,11 @@ public sealed class PlayerProgressUI : MonoBehaviour
 
     private void DrawPause(float screenWidth, float screenHeight)
     {
-        Rect panel = CenterPanel(screenWidth, screenHeight, 500f, 730f, "일시정지");
+        Rect panel = CenterPanel(screenWidth, screenHeight, 520f, 820f, "일시정지");
         float x = panel.x + 75f;
         float y = panel.y + 82f;
         float width = panel.width - 150f;
-        var debtCard = new Rect(panel.x + 45f, y, panel.width - 90f, 118f);
+        var debtCard = new Rect(panel.x + 45f, y, panel.width - 90f, 174f);
         FishingUiTheme.DrawCard(debtCard, true);
         GUI.Label(new Rect(debtCard.x + 18f, debtCard.y + 10f, 120f, 28f), "남은 빚", FishingUiTheme.Small);
         FishingUiTheme.ColoredLabel(new Rect(debtCard.x + 130f, debtCard.y + 6f, debtCard.width - 148f, 34f),
@@ -445,9 +459,24 @@ public sealed class PlayerProgressUI : MonoBehaviour
             TryRepayDebt(100);
         if (FishingUiTheme.StyledButton(new Rect(debtCard.xMax - 192f, debtCard.y + 53f, 174f, 46f), "500 G 상환", primary: true))
             TryRepayDebt(500);
+        GUI.enabled = playerDebt != null && !playerDebt.IsFullyRepaid;
+        GUI.SetNextControlName("DebtRepaymentAmount");
+        repaymentInput = GUI.TextField(new Rect(debtCard.x + 18f, debtCard.y + 112f, 252f, 42f), repaymentInput, 10,
+            FishingUiTheme.Body);
+        if (FishingUiTheme.StyledButton(new Rect(debtCard.xMax - 142f, debtCard.y + 112f, 124f, 42f), "직접 상환", primary: true))
+        {
+            if (int.TryParse(repaymentInput.Replace(",", ""), out int requested)) TryRepayDebt(requested);
+            else statusMessage = "상환할 금액을 숫자로 입력해 주세요.";
+        }
         GUI.enabled = oldEnabled;
 
-        float menuY = y + 142f;
+        float menuY = y + 194f;
+        if (FishingUiTheme.StyledButton(new Rect(x, menuY, width, 48f), "업적"))
+        {
+            audioDirector?.PlayUiClick();
+            OpenWindow(WindowMode.Achievements);
+        }
+        menuY += 58f;
         if (FishingUiTheme.StyledButton(new Rect(x, menuY, width, 52f), "게임 계속하기", primary: true))
         {
             audioDirector?.PlayUiClick();
@@ -495,6 +524,71 @@ public sealed class PlayerProgressUI : MonoBehaviour
                 : $"빚 {paid:N0} G를 상환했습니다.";
         }
         else statusMessage = required > wallet.Balance ? "상환할 돈이 부족합니다." : "더 이상 갚을 빚이 없습니다.";
+    }
+
+    private void DrawAchievements(float screenWidth, float screenHeight)
+    {
+        Rect panel = CenterPanel(screenWidth, screenHeight, 820f, 760f, "업적");
+        IReadOnlyList<AchievementDefinition> definitions = achievementSystem?.Definitions;
+        int visibleCount = 0;
+        if (definitions != null)
+            for (int i = 0; i < definitions.Count; i++)
+            {
+                AchievementStateData state = achievementSystem.GetState(definitions[i]?.Id);
+                if (definitions[i] != null && (!definitions[i].Hidden || (state != null && state.Completed))) visibleCount++;
+            }
+        var view = new Rect(panel.x + 26f, panel.y + 68f, panel.width - 52f, panel.height - 125f);
+        scrollPosition = GUI.BeginScrollView(view, scrollPosition,
+            new Rect(0f, 0f, view.width - 18f, Mathf.Max(view.height - 4f, visibleCount * 106f)));
+        int rowIndex = 0;
+        if (definitions != null)
+        {
+            for (int i = 0; i < definitions.Count; i++)
+            {
+                AchievementDefinition definition = definitions[i];
+                AchievementStateData state = achievementSystem.GetState(definition?.Id);
+                if (definition == null || (definition.Hidden && (state == null || !state.Completed))) continue;
+                Rect row = new(2f, rowIndex * 106f, view.width - 24f, 96f);
+                FishingUiTheme.DrawSlot(row, state != null && state.Completed ? FishingUiTheme.Gold : FishingUiTheme.Muted,
+                    state != null && state.Completed);
+                GUI.Label(new Rect(row.x + 16f, row.y + 10f, 330f, 28f), definition.Title, FishingUiTheme.Heading);
+                GUI.Label(new Rect(row.x + 16f, row.y + 39f, row.width - 210f, 24f), definition.Description, FishingUiTheme.Small);
+                int target = definition.Condition == AchievementConditionType.AllFishDiscovered
+                    ? Mathf.Max(1, fishCatalog?.Count ?? 1)
+                    : Mathf.Max(1, definition.Target);
+                int progressValue = state?.Progress ?? 0;
+                GUI.Label(new Rect(row.x + 16f, row.y + 66f, 180f, 22f), GetAchievementCategoryName(definition.Category), FishingUiTheme.Small);
+                GUI.Label(new Rect(row.xMax - 205f, row.y + 14f, 185f, 28f),
+                    state != null && state.Completed ? "완료" : $"{progressValue:N0} / {target:N0}", FishingUiTheme.BodyCentered);
+                GUI.Label(new Rect(row.xMax - 205f, row.y + 52f, 185f, 24f),
+                    definition.RewardGold > 0 ? $"보상 {definition.RewardGold:N0} G" : "특별 달성 업적", FishingUiTheme.SmallCentered);
+                rowIndex++;
+            }
+        }
+        GUI.EndScrollView();
+        GUI.Label(new Rect(panel.x + 30f, panel.yMax - 38f, panel.width - 60f, 24f),
+            "ESC를 누르면 일시정지 메뉴로 돌아갑니다.", FishingUiTheme.SmallCentered);
+    }
+
+    private static string GetAchievementCategoryName(AchievementCategory category) => category switch
+    {
+        AchievementCategory.Fishing => "낚시",
+        AchievementCategory.Collection => "수집",
+        AchievementCategory.Economy => "경제",
+        AchievementCategory.Equipment => "장비",
+        AchievementCategory.Debt => "빚 상환",
+        _ => "특별"
+    };
+
+    private void DrawGameClearNotice(float screenWidth, float screenHeight)
+    {
+        var panel = new Rect((screenWidth - 620f) * .5f, (screenHeight - 240f) * .5f, 620f, 240f);
+        FishingUiTheme.DrawPanel(panel);
+        FishingUiTheme.DrawTitlePlate(new Rect(panel.x + 110f, panel.y - 18f, panel.width - 220f, 60f), "GAME CLEAR", FishingUiTheme.Gold);
+        FishingUiTheme.DrawOutlinedLabel(new Rect(panel.x + 40f, panel.y + 74f, panel.width - 80f, 46f),
+            "빚을 모두 갚았습니다!", FishingUiTheme.Title, FishingUiTheme.Cream);
+        FishingUiTheme.DrawOutlinedLabel(new Rect(panel.x + 40f, panel.y + 128f, panel.width - 80f, 54f),
+            "낚시 마을에서의 새로운 인생이 시작됩니다.", FishingUiTheme.OverlayBodyCentered, FishingUiTheme.Cream);
     }
 
     private void DrawMainMenu(float screenWidth, float screenHeight)
