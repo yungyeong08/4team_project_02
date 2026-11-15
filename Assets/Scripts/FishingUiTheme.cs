@@ -510,6 +510,7 @@ public static class FishingUiTheme
     {
         return new GUIStyle(GUI.skin.label)
         {
+            font = ResolveReadableKoreanFont(),
             alignment = alignment,
             fontSize = size,
             fontStyle = fontStyle,
@@ -528,7 +529,14 @@ public static class FishingUiTheme
 
     private static Font ResolveReadableKoreanFont()
     {
-        if (readableKoreanFont != null) return readableKoreanFont;
+        if (SupportsFishingKorean(readableKoreanFont)) return readableKoreanFont;
+
+        Font projectFont = Resources.Load<Font>("Font/KyoboHandwriting2025lyb");
+        if (SupportsFishingKorean(projectFont))
+        {
+            readableKoreanFont = projectFont;
+            return projectFont;
+        }
 
         string[] preferredFonts =
         {
@@ -542,11 +550,18 @@ public static class FishingUiTheme
             {
                 if (!string.Equals(preferredFonts[preferred], installedFonts[installed],
                         System.StringComparison.OrdinalIgnoreCase)) continue;
-                readableKoreanFont = Font.CreateDynamicFontFromOSFont(installedFonts[installed], 25);
-                return readableKoreanFont;
+                Font candidate = Font.CreateDynamicFontFromOSFont(installedFonts[installed], 25);
+                if (!SupportsFishingKorean(candidate)) continue;
+                readableKoreanFont = candidate;
+                return candidate;
             }
         }
         return null;
+    }
+
+    private static bool SupportsFishingKorean(Font font)
+    {
+        return font != null && font.HasCharacter('\uB09A') && font.HasCharacter('\uC2DC');
     }
 
     private static GUIStyle FramedStyle(Texture2D background, int border)
@@ -563,6 +578,7 @@ public static class FishingUiTheme
     {
         var style = new GUIStyle(GUI.skin.button)
         {
+            font = ResolveReadableKoreanFont(),
             alignment = TextAnchor.MiddleCenter,
             fontSize = 16,
             fontStyle = FontStyle.Bold,

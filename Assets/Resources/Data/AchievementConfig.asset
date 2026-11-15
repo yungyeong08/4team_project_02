@@ -19,6 +19,7 @@ MonoBehaviour:
     Description: "\uB0DA\uC2DC\uC5D0 \uCC98\uC74C \uC131\uACF5\uD558\uC138\uC694."
     Condition: 0
     Target: 1
+    RequiredRarity: 0
     RewardGold: 100
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -29,6 +30,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30\uB97C \uCD1D 10\uB9C8\uB9AC \uC7A1\uC73C\uC138\uC694."
     Condition: 0
     Target: 10
+    RequiredRarity: 0
     RewardGold: 300
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -39,6 +41,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30\uB97C \uCD1D 50\uB9C8\uB9AC \uC7A1\uC73C\uC138\uC694."
     Condition: 0
     Target: 50
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -49,6 +52,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30\uB97C \uCD1D 100\uB9C8\uB9AC \uC7A1\uC73C\uC138\uC694."
     Condition: 0
     Target: 100
+    RequiredRarity: 0
     RewardGold: 2500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -59,6 +63,7 @@ MonoBehaviour:
     Description: "PERFECT \uD3EC\uD68D\uC744 10\uD68C \uB2EC\uC131\uD558\uC138\uC694."
     Condition: 1
     Target: 10
+    RequiredRarity: 0
     RewardGold: 500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -69,6 +74,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30 1\uC885\uC744 \uBC1C\uACAC\uD558\uC138\uC694."
     Condition: 2
     Target: 1
+    RequiredRarity: 0
     RewardGold: 100
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -79,6 +85,7 @@ MonoBehaviour:
     Description: "\uC11C\uB85C \uB2E4\uB978 \uBB3C\uACE0\uAE30 3\uC885\uC744 \uBC1C\uACAC\uD558\uC138\uC694."
     Condition: 2
     Target: 3
+    RequiredRarity: 0
     RewardGold: 500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -89,6 +96,7 @@ MonoBehaviour:
     Description: "\uC11C\uB85C \uB2E4\uB978 \uBB3C\uACE0\uAE30 10\uC885\uC744 \uBC1C\uACAC\uD558\uC138\uC694."
     Condition: 2
     Target: 10
+    RequiredRarity: 0
     RewardGold: 2000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -122,6 +130,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30 \uD310\uB9E4\uC5D0 \uCC98\uC74C \uC131\uACF5\uD558\uC138\uC694."
     Condition: 5
     Target: 1
+    RequiredRarity: 0
     RewardGold: 100
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -132,6 +141,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30 \uD310\uB9E4\uB85C \uCD1D 1,000 G\uB97C \uBC8C\uC73C\uC138\uC694."
     Condition: 4
     Target: 1000
+    RequiredRarity: 0
     RewardGold: 300
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -142,6 +152,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30 \uD310\uB9E4\uB85C \uCD1D 10,000 G\uB97C \uBC8C\uC73C\uC138\uC694."
     Condition: 4
     Target: 10000
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -152,6 +163,7 @@ MonoBehaviour:
     Description: "\uBB3C\uACE0\uAE30 \uD310\uB9E4\uB85C \uCD1D 50,000 G\uB97C \uBC8C\uC73C\uC138\uC694."
     Condition: 4
     Target: 50000
+    RequiredRarity: 0
     RewardGold: 3000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -162,6 +174,7 @@ MonoBehaviour:
     Description: "\uBAA8\uB450 \uD310\uB9E4\uC5D0 10\uD68C \uC131\uACF5\uD558\uC138\uC694."
     Condition: 6
     Target: 10
+    RequiredRarity: 0
     RewardGold: 500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -172,6 +185,7 @@ MonoBehaviour:
     Description: "\uCD94\uAC00 \uB0DA\uC2EF\uB300\uB97C \uCC98\uC74C \uAD6C\uB9E4\uD558\uC138\uC694."
     Condition: 7
     Target: 2
+    RequiredRarity: 0
     RewardGold: 300
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -182,6 +196,7 @@ MonoBehaviour:
     Description: "\uB0DA\uC2EF\uB300 3\uC885\uC744 \uBCF4\uC720\uD558\uC138\uC694."
     Condition: 7
     Target: 3
+    RequiredRarity: 0
     RewardGold: 1500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -193,6 +208,7 @@ MonoBehaviour:
       10\uB9C8\uB9AC\uB97C \uC7A1\uC73C\uC138\uC694."
     Condition: 8
     Target: 10
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -203,6 +219,7 @@ MonoBehaviour:
     Description: "\uBE5A\uC744 \uCC98\uC74C \uC0C1\uD658\uD558\uC138\uC694."
     Condition: 9
     Target: 1
+    RequiredRarity: 0
     RewardGold: 500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -213,6 +230,7 @@ MonoBehaviour:
     Description: "\uCD08\uAE30 \uBE5A\uC758 50%\uB97C \uC0C1\uD658\uD558\uC138\uC694."
     Condition: 10
     Target: 50
+    RequiredRarity: 0
     RewardGold: 1500
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -223,6 +241,7 @@ MonoBehaviour:
     Description: "\uB0A8\uC740 \uBE5A\uC744 0 G\uB85C \uB9CC\uB4DC\uC138\uC694."
     Condition: 11
     Target: 1
+    RequiredRarity: 0
     RewardGold: 5000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -234,6 +253,7 @@ MonoBehaviour:
       \uB2EC\uC131\uD558\uC138\uC694."
     Condition: 12
     Target: 1
+    RequiredRarity: 0
     RewardGold: 0
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -245,6 +265,7 @@ MonoBehaviour:
       \uBC8C\uC73C\uC138\uC694."
     Condition: 13
     Target: 5000
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -256,16 +277,18 @@ MonoBehaviour:
       \uC7A1\uC73C\uC138\uC694."
     Condition: 14
     Target: 2
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
     Hidden: 0
   - Id: success_streak_10
     Category: 5
-    Title: "\uB0DA\uC2DC \uC0BC\uB9E4\uACBD"
-    Description: "\uB0DA\uC2DC\uC5D0 10\uBC88 \uC5F0\uC18D \uC131\uACF5\uD558\uC138\uC694."
+    Title: "\uB09A\uC2DC\uC655 \xB7 10\uC5F0\uC18D \uD3EC\uD68D"
+    Description: "\uB09A\uC2DC\uC5D0 10\uBC88 \uC5F0\uC18D \uC131\uACF5\uD558\uC138\uC694."
     Condition: 15
     Target: 10
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -277,6 +300,7 @@ MonoBehaviour:
       \uC54A\uACE0 \uD310\uB9E4\uB85C 5,000 G\uB97C \uBC8C\uC73C\uC138\uC694."
     Condition: 16
     Target: 5000
+    RequiredRarity: 0
     RewardGold: 1000
     Badge: {fileID: 0}
     SpecialRewardId: 
@@ -288,6 +312,7 @@ MonoBehaviour:
       \uBAA8\uB4E0 \uC885\uC744 \uBC1C\uACAC\uD558\uC138\uC694."
     Condition: 17
     Target: 1
+    RequiredRarity: 0
     RewardGold: 0
     Badge: {fileID: 0}
     SpecialRewardId: 

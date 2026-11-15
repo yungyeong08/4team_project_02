@@ -82,7 +82,7 @@ public static class AchievementDefaults
             A("new_life", AchievementCategory.Debt, "새로운 인생", "빚을 모두 갚고 게임 클리어를 달성하세요.", AchievementConditionType.GameCleared, 1),
             A("single_sale_5000", AchievementCategory.Special, "오늘은 대박!", "한 번의 판매로 5,000 G 이상을 벌으세요.", AchievementConditionType.SingleSaleGold, 5000, 1000),
             A("rare_streak_2", AchievementCategory.Special, "운 좋은 날", "희귀 등급 물고기를 2번 연속으로 잡으세요.", AchievementConditionType.ConsecutiveRarityCatches, 2, 1000),
-            A("success_streak_10", AchievementCategory.Special, "낚시 삼매경", "낚시에 10번 연속 성공하세요.", AchievementConditionType.ConsecutiveSuccessfulCatches, 10, 1000),
+            A("success_streak_10", AchievementCategory.Special, "낚시왕 · 10연속 포획", "낚시에 10번 연속 성공하세요.", AchievementConditionType.ConsecutiveSuccessfulCatches, 10, 1000),
             A("frugal_angler", AchievementCategory.Special, "절약 정신", "추가 낚싯대를 구매하지 않고 판매로 5,000 G를 벌으세요.", AchievementConditionType.SalesWithoutAdditionalRodPurchase, 5000, 1000),
             A("all_fish", AchievementCategory.Special, "어부의 전설", "현재 물고기 데이터베이스의 모든 종을 발견하세요.", AchievementConditionType.AllFishDiscovered, 1)
     };
