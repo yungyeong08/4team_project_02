@@ -16,7 +16,7 @@ MonoBehaviour:
   - Id: first_catch
     Category: 0
     Title: "\uCCAB \uCD9C\uC870"
-    Description: "\uB0DA\uC2DC\uC5D0 \uCC98\uC74C \uC131\uACF5\uD558\uC138\uC694."
+    Description: "\uB09A\uC2DC\uC5D0 \uCC98\uC74C \uC131\uACF5\uD558\uC138\uC694."
     Condition: 0
     Target: 1
     RequiredRarity: 0
@@ -26,7 +26,7 @@ MonoBehaviour:
     Hidden: 0
   - Id: catch_10
     Category: 0
-    Title: "\uB0DA\uC2DC \uC785\uBB38\uC790"
+    Title: "\uB09A\uC2DC \uC785\uBB38\uC790"
     Description: "\uBB3C\uACE0\uAE30\uB97C \uCD1D 10\uB9C8\uB9AC \uC7A1\uC73C\uC138\uC694."
     Condition: 0
     Target: 10
@@ -37,7 +37,7 @@ MonoBehaviour:
     Hidden: 0
   - Id: catch_50
     Category: 0
-    Title: "\uBCA0\uD14C\uB791 \uB0DA\uC2DC\uAFBC"
+    Title: "\uBCA0\uD14C\uB791 \uB09A\uC2DC\uAFBC"
     Description: "\uBB3C\uACE0\uAE30\uB97C \uCD1D 50\uB9C8\uB9AC \uC7A1\uC73C\uC138\uC694."
     Condition: 0
     Target: 50
@@ -182,7 +182,7 @@ MonoBehaviour:
   - Id: buy_rod_1
     Category: 3
     Title: "\uC0C8\uB85C\uC6B4 \uC7A5\uBE44"
-    Description: "\uCD94\uAC00 \uB0DA\uC2EF\uB300\uB97C \uCC98\uC74C \uAD6C\uB9E4\uD558\uC138\uC694."
+    Description: "\uCD94\uAC00 \uB09A\uC2EF\uB300\uB97C \uCC98\uC74C \uAD6C\uB9E4\uD558\uC138\uC694."
     Condition: 7
     Target: 2
     RequiredRarity: 0
@@ -193,7 +193,7 @@ MonoBehaviour:
   - Id: own_rods_3
     Category: 3
     Title: "\uC7A5\uBE44 \uC218\uC9D1\uAC00"
-    Description: "\uB0DA\uC2EF\uB300 3\uC885\uC744 \uBCF4\uC720\uD558\uC138\uC694."
+    Description: "\uB09A\uC2EF\uB300 3\uC885\uC744 \uBCF4\uC720\uD558\uC138\uC694."
     Condition: 7
     Target: 3
     RequiredRarity: 0
@@ -204,7 +204,7 @@ MonoBehaviour:
   - Id: rod_investment
     Category: 3
     Title: "\uD22C\uC790\uC758 \uACB0\uC2E4"
-    Description: "\uCCAB \uCD94\uAC00 \uB0DA\uC2EF\uB300 \uAD6C\uB9E4 \uD6C4 \uBB3C\uACE0\uAE30
+    Description: "\uCCAB \uCD94\uAC00 \uB09A\uC2EF\uB300 \uAD6C\uB9E4 \uD6C4 \uBB3C\uACE0\uAE30
       10\uB9C8\uB9AC\uB97C \uC7A1\uC73C\uC138\uC694."
     Condition: 8
     Target: 10
@@ -296,7 +296,7 @@ MonoBehaviour:
   - Id: frugal_angler
     Category: 5
     Title: "\uC808\uC57D \uC815\uC2E0"
-    Description: "\uCD94\uAC00 \uB0DA\uC2EF\uB300\uB97C \uAD6C\uB9E4\uD558\uC9C0
+    Description: "\uCD94\uAC00 \uB09A\uC2EF\uB300\uB97C \uAD6C\uB9E4\uD558\uC9C0
       \uC54A\uACE0 \uD310\uB9E4\uB85C 5,000 G\uB97C \uBC8C\uC73C\uC138\uC694."
     Condition: 16
     Target: 5000
