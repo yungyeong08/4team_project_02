@@ -67,7 +67,7 @@ public static class AchievementDefaults
             A("discover_3", AchievementCategory.Collection, "물고기 연구가", "서로 다른 물고기 3종을 발견하세요.", AchievementConditionType.UniqueFishDiscovered, 3, 500),
             A("discover_10", AchievementCategory.Collection, "수집의 달인", "서로 다른 물고기 10종을 발견하세요.", AchievementConditionType.UniqueFishDiscovered, 10, 2000),
             R("first_rare", AchievementCategory.Collection, "희귀한 만남", "희귀 등급 물고기를 처음 잡으세요.", FishRarity.Rare, 1000),
-            R("first_legendary", AchievementCategory.Collection, "전설을 찾아서", "전설 등급 물고기를 잡으세요.", FishRarity.Legendary, 3000),
+            R("first_legendary", AchievementCategory.Collection, "전설을 찾아서", "전설 등급 물고기를 잡으세요.", FishRarity.Legendary, 3000, true),
             A("first_sale", AchievementCategory.Economy, "첫 수익", "물고기 판매에 처음 성공하세요.", AchievementConditionType.SuccessfulSales, 1, 100),
             A("sales_1000", AchievementCategory.Economy, "장사의 시작", "물고기 판매로 총 1,000 G를 벌으세요.", AchievementConditionType.TotalSaleGold, 1000, 300),
             A("sales_10000", AchievementCategory.Economy, "작은 부자", "물고기 판매로 총 10,000 G를 벌으세요.", AchievementConditionType.TotalSaleGold, 10000, 1000),
@@ -92,8 +92,8 @@ public static class AchievementDefaults
         => new(id, category, title, description, condition, target, reward);
 
     private static AchievementDefinition R(string id, AchievementCategory category, string title, string description,
-        FishRarity rarity, int reward)
+        FishRarity rarity, int reward, bool hidden = false)
         => new(id, category, title, description, AchievementConditionType.FirstRarityCaught, 1, reward)
-        { RequiredRarity = rarity };
+        { RequiredRarity = rarity, Hidden = hidden };
 
 }

@@ -8,6 +8,7 @@ public static class FishingPreviewTools
 {
     private const string FishingScenePath = "Assets/Scenes/FishingDemo.unity";
     private const string SmokeTestSessionKey = "Fishing.PlayModeSmokeTest";
+    private const string SmokeTestSavePathEnvironment = "FISHING_TEST_SAVE_PATH";
     private const string ProgressionValidationSessionKey = "Fishing.ProgressionValidation.ContentExpansionV1";
 
     private const string MapConfigPath = "Assets/Resources/Data/FishingMapConfig.asset";
@@ -105,9 +106,17 @@ public static class FishingPreviewTools
         foreach (FishDefinition defaultFish in FishCatalog.CreateDefault())
             if (!fishIds.Contains(defaultFish.Id))
                 throw new System.InvalidOperationException($"Default fish is missing: {defaultFish.Id}.");
-        foreach (FishRarity rarity in System.Enum.GetValues(typeof(FishRarity)))
+        FishRarity[] requiredRarities =
+        {
+            FishRarity.Common, FishRarity.Uncommon, FishRarity.Rare, FishRarity.Epic
+        };
+        foreach (FishRarity rarity in requiredRarities)
             if (!rarities.Contains(rarity))
                 throw new System.InvalidOperationException($"Fish catalog has no {rarity} species.");
+        AchievementDefinition legendaryAchievement = achievementConfig.Achievements.Find(
+            achievement => achievement != null && achievement.Id == "first_legendary");
+        if (!rarities.Contains(FishRarity.Legendary) && legendaryAchievement != null && !legendaryAchievement.Hidden)
+            throw new System.InvalidOperationException("The unavailable Legendary-fish achievement must stay hidden in this content phase.");
 
         var rodIds = new System.Collections.Generic.HashSet<string>();
         FishingRodDefinition previous = null;
@@ -264,8 +273,12 @@ public static class FishingPreviewTools
         }
     }
 
+    [MenuItem("Tools/Fishing/Run PlayMode Smoke Test")]
     public static void RunPlayModeSmokeTest()
     {
+        string testSavePath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "fishing-playmode-smoke-save.json");
+        System.Environment.SetEnvironmentVariable(SmokeTestSavePathEnvironment, testSavePath);
+        DeleteSmokeTestSaveFiles(testSavePath);
         EditorSceneManager.OpenScene(FishingScenePath, OpenSceneMode.Single);
         SessionState.SetBool(SmokeTestSessionKey, true);
         SubscribeToSmokeTest();
@@ -294,7 +307,8 @@ public static class FishingPreviewTools
             PixelMapBuilder builder = Object.FindFirstObjectByType<PixelMapBuilder>();
             PixelCharacter player = Object.FindFirstObjectByType<PixelCharacter>();
             if (builder == null || player == null) throw new System.InvalidOperationException("Runtime map or player was not created.");
-            if (builder.FishingSpots.Count != 1) throw new System.InvalidOperationException("Runtime starter map must contain only the first fishing spot.");
+            if (builder.FishingSpots.Count != 3)
+                throw new System.InvalidOperationException($"Runtime map must contain three fishing spots, found {builder.FishingSpots.Count}.");
             if (builder.FishingShop == null || builder.FishMarket == null) throw new System.InvalidOperationException("Shop objects were not created.");
 
             FishingGameController controller = Object.FindFirstObjectByType<FishingGameController>();
@@ -390,8 +404,23 @@ public static class FishingPreviewTools
 
     private static void FinishSmokeTest(int exitCode)
     {
-        if (Application.isBatchMode) EditorApplication.Exit(exitCode);
-        else EditorApplication.ExitPlaymode();
+        string testSavePath = System.Environment.GetEnvironmentVariable(SmokeTestSavePathEnvironment);
+        DeleteSmokeTestSaveFiles(testSavePath);
+        if (Application.isBatchMode)
+        {
+            EditorApplication.Exit(exitCode);
+            return;
+        }
+        System.Environment.SetEnvironmentVariable(SmokeTestSavePathEnvironment, null);
+        EditorApplication.ExitPlaymode();
+    }
+
+    private static void DeleteSmokeTestSaveFiles(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path)) return;
+        string[] paths = { path, path + ".bak", path + ".tmp" };
+        foreach (string candidate in paths)
+            if (System.IO.File.Exists(candidate)) System.IO.File.Delete(candidate);
     }
 
     [MenuItem("Tools/Fishing/Validate Map Configuration")]

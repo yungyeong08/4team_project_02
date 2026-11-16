@@ -123,7 +123,7 @@ MonoBehaviour:
     RewardGold: 3000
     Badge: {fileID: 0}
     SpecialRewardId: 
-    Hidden: 0
+    Hidden: 1
   - Id: first_sale
     Category: 2
     Title: "\uCCAB \uC218\uC775"

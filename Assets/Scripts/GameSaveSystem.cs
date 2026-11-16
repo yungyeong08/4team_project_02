@@ -50,7 +50,17 @@ public sealed class GameSaveSystem : MonoBehaviour
     public string LastStatus { get; private set; } = "";
     public event Action NewGameStarted;
     public bool HasSaveData => File.Exists(SavePath) || File.Exists(BackupPath);
-    public string SavePath => Path.Combine(Application.persistentDataPath, SaveFileName);
+    public string SavePath
+    {
+        get
+        {
+#if UNITY_EDITOR
+            string testPath = Environment.GetEnvironmentVariable("FISHING_TEST_SAVE_PATH");
+            if (!string.IsNullOrWhiteSpace(testPath)) return testPath;
+#endif
+            return Path.Combine(Application.persistentDataPath, SaveFileName);
+        }
+    }
     private string BackupPath => SavePath + ".bak";
 
     public void Setup(
@@ -360,7 +370,11 @@ public sealed class GameSaveSystem : MonoBehaviour
 
     private void OnApplicationQuit()
     {
-        if (initialized) Save();
+        if (!initialized) return;
+#if UNITY_EDITOR
+        if (!string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("FISHING_TEST_SAVE_PATH"))) return;
+#endif
+        Save();
     }
 
     private void OnDestroy()
