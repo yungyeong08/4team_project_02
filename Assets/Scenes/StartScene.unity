@@ -241,7 +241,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::FishingTitleScreen
   customFont: {fileID: 12800000, guid: e8f15e8ce87e2734a86ffa8190a687e9, type: 3}
-  backgroundImage: {fileID: 2800000, guid: 93c9b326ecbe5a249bcf7650b93db78a, type: 3}
+  backgroundImage: {fileID: 2800000, guid: bf2ca44dcec57c14f995738fb18f1dc3, type: 3}
   bgmAudioSource: {fileID: 0}
   sfxAudioSource: {fileID: 0}
   bgmVolume: 1
