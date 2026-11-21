@@ -12,6 +12,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 488ae741a1aeb6e4c88c1cf6dd7279dc, type: 3}
   m_Name: FishingMapConfig
   m_EditorClassIdentifier: Assembly-CSharp::FishingMapConfig
+  contentVersion: 2
   MapSize: {x: 84, y: 38}
   PlayerStart: {x: -33, y: -11}
   FishingShopPosition: {x: -12, y: -10}
@@ -32,22 +33,30 @@ MonoBehaviour:
     FishPoolIds: []
     FishPool:
     - FishId: northern_pike
-      Weight: 25
-    - FishId: common_carp
-      Weight: 22
-    - FishId: golden_salmon
-      Weight: 18
-    - FishId: sturgeon
       Weight: 15
-    - FishId: ancient_pike
+    - FishId: common_carp
+      Weight: 15
+    - FishId: sturgeon
       Weight: 12
-    - FishId: atlantic_salmon
+    - FishId: golden_salmon
+      Weight: 12
+    - FishId: fish_21
+      Weight: 10
+    - FishId: ancient_pike
+      Weight: 9
+    - FishId: fish_22
       Weight: 8
+    - FishId: atlantic_salmon
+      Weight: 7
+    - FishId: fish_23
+      Weight: 6
+    - FishId: fish_27
+      Weight: 6
     RarityWeights:
     - Rarity: 0
-      Weight: 80
+      Weight: 64
     - Rarity: 1
-      Weight: 20
+      Weight: 36
     - Rarity: 2
       Weight: 0
     - Rarity: 3
@@ -69,32 +78,40 @@ MonoBehaviour:
     FishPoolIds: []
     FishPool:
     - FishId: ancient_pike
-      Weight: 12
+      Weight: 8
     - FishId: atlantic_salmon
-      Weight: 12
+      Weight: 9
     - FishId: squid
-      Weight: 12
+      Weight: 9
     - FishId: pufferfish
-      Weight: 10
+      Weight: 8
     - FishId: crucian_carp
-      Weight: 12
-    - FishId: silk_carp
-      Weight: 8
-    - FishId: golden_crucian
-      Weight: 8
+      Weight: 9
     - FishId: snakehead
-      Weight: 10
+      Weight: 8
     - FishId: jade_carp
-      Weight: 8
-    - FishId: sturgeon
-      Weight: 8
+      Weight: 7
+    - FishId: fish_22
+      Weight: 7
+    - FishId: fish_23
+      Weight: 7
+    - FishId: fish_24
+      Weight: 7
+    - FishId: fish_25
+      Weight: 6
+    - FishId: fish_27
+      Weight: 6
+    - FishId: fish_28
+      Weight: 5
+    - FishId: golden_crucian
+      Weight: 4
     RarityWeights:
     - Rarity: 0
-      Weight: 8
+      Weight: 0
     - Rarity: 1
-      Weight: 76
+      Weight: 91
     - Rarity: 2
-      Weight: 16
+      Weight: 9
     - Rarity: 3
       Weight: 0
     - Rarity: 4
@@ -113,33 +130,45 @@ MonoBehaviour:
     DifficultyMultiplier: 1.18
     FishPoolIds: []
     FishPool:
-    - FishId: silk_carp
-      Weight: 16
-    - FishId: golden_crucian
-      Weight: 14
-    - FishId: moonlight_carp
-      Weight: 14
     - FishId: swordfish
-      Weight: 13
-    - FishId: bluefin_tuna
-      Weight: 12
-    - FishId: red_trout
-      Weight: 11
-    - FishId: golden_minnow
       Weight: 10
+    - FishId: bluefin_tuna
+      Weight: 9
     - FishId: lake_catfish
-      Weight: 6
+      Weight: 4
+    - FishId: silk_carp
+      Weight: 9
+    - FishId: red_trout
+      Weight: 8
+    - FishId: golden_crucian
+      Weight: 8
+    - FishId: golden_minnow
+      Weight: 7
+    - FishId: moonlight_carp
+      Weight: 8
     - FishId: legendary_golden_carp
       Weight: 4
+    - FishId: fish_24
+      Weight: 6
+    - FishId: fish_25
+      Weight: 6
+    - FishId: fish_26
+      Weight: 6
+    - FishId: fish_28
+      Weight: 6
+    - FishId: fish_29
+      Weight: 3
+    - FishId: fish_30
+      Weight: 6
     RarityWeights:
     - Rarity: 0
       Weight: 0
     - Rarity: 1
-      Weight: 0
+      Weight: 12
     - Rarity: 2
-      Weight: 90
+      Weight: 77
     - Rarity: 3
-      Weight: 10
+      Weight: 11
     - Rarity: 4
       Weight: 0
   WaterTiles:

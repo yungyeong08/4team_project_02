@@ -137,12 +137,12 @@ MonoBehaviour:
     DisplayName: "\uC0C1\uC5B4"
     Icon: {fileID: 2800000, guid: 178e05b0ed20b82438de1243747488ba, type: 3}
     Rarity: 3
-    SalePrice: 1800
+    SalePrice: 1500
     ReelZoneSize: 0.17
-    MovementAcceleration: 0.46
-    MaxSpeed: 0.56
-    DirectionChangeInterval: 0.64
-    DirectionImpulse: 0.27
+    MovementAcceleration: 0.48
+    MaxSpeed: 0.58
+    DirectionChangeInterval: 0.66
+    DirectionImpulse: 0.28
     CatchRate: 0.2
     EscapeRate: 0.29
   - Id: silk_carp
@@ -245,14 +245,134 @@ MonoBehaviour:
     DisplayName: "\uBC14\uB2E4\uAC70\uBD81"
     Icon: {fileID: 2800000, guid: 6736174b5151256418a53efd66871abf, type: 3}
     Rarity: 3
-    SalePrice: 2000
+    SalePrice: 1600
     ReelZoneSize: 0.16
-    MovementAcceleration: 0.49
-    MaxSpeed: 0.59
-    DirectionChangeInterval: 0.56
-    DirectionImpulse: 0.29
+    MovementAcceleration: 0.4
+    MaxSpeed: 0.49
+    DirectionChangeInterval: 0.55
+    DirectionImpulse: 0.3
     CatchRate: 0.19
     EscapeRate: 0.31
+  - Id: fish_21
+    DisplayName: "\uBD89\uC740\uB3C4\uBBF8"
+    Icon: {fileID: 2800000, guid: 75cf7f7eaa33c2b4b8b194462e8d6b2e, type: 3}
+    Rarity: 0
+    SalePrice: 180
+    ReelZoneSize: 0.32
+    MovementAcceleration: 0.16
+    MaxSpeed: 0.24
+    DirectionChangeInterval: 1.75
+    DirectionImpulse: 0.08
+    CatchRate: 0.36
+    EscapeRate: 0.11
+  - Id: fish_22
+    DisplayName: "\uBE14\uB8E8\uD0F1"
+    Icon: {fileID: 2800000, guid: 5d7deaa08396dd44193170932972d1c2, type: 3}
+    Rarity: 1
+    SalePrice: 240
+    ReelZoneSize: 0.27
+    MovementAcceleration: 0.22
+    MaxSpeed: 0.32
+    DirectionChangeInterval: 1.35
+    DirectionImpulse: 0.12
+    CatchRate: 0.31
+    EscapeRate: 0.15
+  - Id: fish_23
+    DisplayName: "\uAF43\uAC8C"
+    Icon: {fileID: 2800000, guid: 88bd833c2be9e3e47b51476ee8f19704, type: 3}
+    Rarity: 1
+    SalePrice: 260
+    ReelZoneSize: 0.26
+    MovementAcceleration: 0.24
+    MaxSpeed: 0.34
+    DirectionChangeInterval: 1.25
+    DirectionImpulse: 0.14
+    CatchRate: 0.3
+    EscapeRate: 0.16
+  - Id: fish_24
+    DisplayName: "\uD574\uB9C8"
+    Icon: {fileID: 2800000, guid: e00a00af1a476e9459f1102b925aa587, type: 3}
+    Rarity: 1
+    SalePrice: 350
+    ReelZoneSize: 0.25
+    MovementAcceleration: 0.26
+    MaxSpeed: 0.35
+    DirectionChangeInterval: 1.18
+    DirectionImpulse: 0.15
+    CatchRate: 0.29
+    EscapeRate: 0.17
+  - Id: fish_25
+    DisplayName: "\uC5D4\uC824\uD53C\uC2DC"
+    Icon: {fileID: 2800000, guid: 627ff23cc2f51cb46b6bc36f61a756e2, type: 3}
+    Rarity: 1
+    SalePrice: 420
+    ReelZoneSize: 0.24
+    MovementAcceleration: 0.28
+    MaxSpeed: 0.38
+    DirectionChangeInterval: 1.1
+    DirectionImpulse: 0.16
+    CatchRate: 0.28
+    EscapeRate: 0.18
+  - Id: fish_26
+    DisplayName: "\uBC14\uB2F7\uAC00\uC7AC"
+    Icon: {fileID: 2800000, guid: a7e587a92dae76a4bbbb6dac9940b013, type: 3}
+    Rarity: 2
+    SalePrice: 520
+    ReelZoneSize: 0.22
+    MovementAcceleration: 0.32
+    MaxSpeed: 0.42
+    DirectionChangeInterval: 0.98
+    DirectionImpulse: 0.18
+    CatchRate: 0.26
+    EscapeRate: 0.2
+  - Id: fish_27
+    DisplayName: "\uD770\uB3D9\uAC00\uB9AC"
+    Icon: {fileID: 2800000, guid: 190e1a6dc3f1d364a9a9b91d654a4c03, type: 3}
+    Rarity: 1
+    SalePrice: 300
+    ReelZoneSize: 0.27
+    MovementAcceleration: 0.21
+    MaxSpeed: 0.31
+    DirectionChangeInterval: 1.4
+    DirectionImpulse: 0.11
+    CatchRate: 0.32
+    EscapeRate: 0.14
+  - Id: fish_28
+    DisplayName: "\uB178\uB791\uC591\uC950\uB3D4"
+    Icon: {fileID: 2800000, guid: e464a9bdf4ce988499e369d3350d10fc, type: 3}
+    Rarity: 2
+    SalePrice: 600
+    ReelZoneSize: 0.21
+    MovementAcceleration: 0.35
+    MaxSpeed: 0.46
+    DirectionChangeInterval: 0.88
+    DirectionImpulse: 0.21
+    CatchRate: 0.24
+    EscapeRate: 0.23
+  - Id: fish_29
+    DisplayName: "\uB300\uC655\uACE0\uB798"
+    Icon: {fileID: 2800000, guid: 78ed0b7f9a0092f4a9871a44c48079eb, type: 3}
+    Rarity: 3
+    SalePrice: 1400
+    ReelZoneSize: 0.15
+    MovementAcceleration: 0.28
+    MaxSpeed: 0.38
+    DirectionChangeInterval: 1.15
+    DirectionImpulse: 0.15
+    CatchRate: 0.18
+    EscapeRate: 0.32
+  - Id: fish_30
+    DisplayName: "\uBCF4\uB77C\uBCA0\uD0C0"
+    Icon: {fileID: 2800000, guid: 85e0a8569e70faf49950d12892bf24bc, type: 3}
+    Rarity: 2
+    SalePrice: 750
+    ReelZoneSize: 0.19
+    MovementAcceleration: 0.39
+    MaxSpeed: 0.5
+    DirectionChangeInterval: 0.76
+    DirectionImpulse: 0.23
+    CatchRate: 0.22
+    EscapeRate: 0.25
   Rods:
   - Id: basic_rod
     DisplayName: "\uB0A1\uC740 \uB09A\uC2EF\uB300"

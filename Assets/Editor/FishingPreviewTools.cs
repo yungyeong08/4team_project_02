@@ -266,6 +266,43 @@ public static class FishingPreviewTools
             areas.ResetProgress();
             areas.Restore(areaRoundTrip);
             if (!areas.IsUnlocked("future")) throw new System.InvalidOperationException("Area save restore failed.");
+
+            // A 20-species-era save contains no entries for new fish. Restoring it must keep
+            // existing progress while leaving Fish21-Fish30 safely undiscovered.
+            fish.Restore(new[]
+            {
+                new FishInventory.FishProgress
+                {
+                    FishId = balance.Fish[0].Id, Count = 2, LifetimeCaught = 5, Discovered = true
+                }
+            });
+            if (fish.GetCount(balance.Fish[0].Id) != 2 || fish.GetLifetimeCaught(balance.Fish[0].Id) != 5 ||
+                fish.IsDiscovered("fish_21"))
+                throw new System.InvalidOperationException("Existing save progress was not preserved while extending the fish catalog.");
+
+            int expectedSale = balance.Fish[0].SalePrice * 2;
+            for (int fishIndex = 0; fishIndex < balance.Fish.Count; fishIndex++)
+            {
+                FishDefinition definition = balance.Fish[fishIndex];
+                bool isNewDiscovery = fish.Add(definition.Id);
+                if (isNewDiscovery != (fishIndex > 0))
+                    throw new System.InvalidOperationException($"NEW discovery state is incorrect for {definition.Id}.");
+                expectedSale += definition.SalePrice;
+            }
+            if (!achievements.GetState("all_fish").Completed || achievements.GetState("first_legendary").Completed)
+                throw new System.InvalidOperationException("Collection achievements do not match the 30-fish non-Legendary catalog.");
+
+            FishMarketSystem market = go.AddComponent<FishMarketSystem>();
+            market.Setup(null, null, wallet, fish, balance.Fish);
+            if (market.TotalSaleValue != expectedSale)
+                throw new System.InvalidOperationException("Sell-all preview does not use FishData prices for the full catalog.");
+            int moneyBeforeSale = wallet.Balance;
+            if (!market.SellFish("fish_21") || fish.GetCount("fish_21") != 0 ||
+                wallet.Balance - moneyBeforeSale != 180)
+                throw new System.InvalidOperationException("Individual sale failed for Fish21.");
+            int remainingExpectedSale = expectedSale - 180;
+            if (market.SellAllFish() != remainingExpectedSale || fish.TotalCount != 0)
+                throw new System.InvalidOperationException("Sell-all failed for the expanded 30-fish catalog.");
         }
         finally
         {
@@ -442,8 +479,8 @@ public static class FishingPreviewTools
             throw new System.InvalidOperationException("Fishing spot difficulty must increase with progression.");
 
         var catalog = FishCatalog.CreateDefault();
-        if (catalog.Count != 20)
-            throw new System.InvalidOperationException($"Expected 20 fish definitions, found {catalog.Count}.");
+        if (catalog.Count != 30)
+            throw new System.InvalidOperationException($"Expected 30 fish definitions, found {catalog.Count}.");
         var knownIds = new System.Collections.Generic.HashSet<string>();
         foreach (FishDefinition fish in catalog)
             if (fish == null || string.IsNullOrWhiteSpace(fish.Id) || !knownIds.Add(fish.Id))
@@ -456,24 +493,32 @@ public static class FishingPreviewTools
         {
             ["village_pond"] = new()
             {
-                ["northern_pike"] = 25f, ["common_carp"] = 22f, ["golden_salmon"] = 18f,
-                ["sturgeon"] = 15f, ["ancient_pike"] = 12f, ["atlantic_salmon"] = 8f
+                ["northern_pike"] = 15f, ["common_carp"] = 15f, ["sturgeon"] = 12f,
+                ["golden_salmon"] = 12f, ["fish_21"] = 10f, ["ancient_pike"] = 9f,
+                ["fish_22"] = 8f, ["atlantic_salmon"] = 7f, ["fish_23"] = 6f, ["fish_27"] = 6f
             },
             ["deep_lake"] = new()
             {
-                ["ancient_pike"] = 12f, ["atlantic_salmon"] = 12f, ["squid"] = 12f,
-                ["pufferfish"] = 10f, ["crucian_carp"] = 12f, ["silk_carp"] = 8f,
-                ["golden_crucian"] = 8f, ["snakehead"] = 10f, ["jade_carp"] = 8f,
-                ["sturgeon"] = 8f
+                ["ancient_pike"] = 8f, ["atlantic_salmon"] = 9f, ["squid"] = 9f,
+                ["pufferfish"] = 8f, ["crucian_carp"] = 9f, ["snakehead"] = 8f,
+                ["jade_carp"] = 7f, ["fish_22"] = 7f, ["fish_23"] = 7f,
+                ["fish_24"] = 7f, ["fish_25"] = 6f, ["fish_27"] = 6f,
+                ["fish_28"] = 5f, ["golden_crucian"] = 4f
             },
             ["legend_lake"] = new()
             {
-                ["silk_carp"] = 16f, ["golden_crucian"] = 14f, ["moonlight_carp"] = 14f,
-                ["swordfish"] = 13f, ["bluefin_tuna"] = 12f, ["red_trout"] = 11f,
-                ["golden_minnow"] = 10f, ["lake_catfish"] = 6f,
-                ["legendary_golden_carp"] = 4f
+                ["swordfish"] = 10f, ["bluefin_tuna"] = 9f, ["lake_catfish"] = 4f,
+                ["silk_carp"] = 9f, ["red_trout"] = 8f, ["golden_crucian"] = 8f,
+                ["golden_minnow"] = 7f, ["moonlight_carp"] = 8f,
+                ["legendary_golden_carp"] = 4f, ["fish_24"] = 6f, ["fish_25"] = 6f,
+                ["fish_26"] = 6f, ["fish_28"] = 6f, ["fish_29"] = 3f, ["fish_30"] = 6f
             }
         };
+
+        var fishById = new System.Collections.Generic.Dictionary<string, FishDefinition>();
+        foreach (FishDefinition fish in catalog) fishById.Add(fish.Id, fish);
+        var pooledIds = new System.Collections.Generic.HashSet<string>();
+        float[] expectedValues = { 166.6f, 351.2f, 782.4f };
 
         for (int spotIndex = 0; spotIndex < config.FishingSpots.Count; spotIndex++)
         {
@@ -494,17 +539,35 @@ public static class FishingPreviewTools
                     Mathf.Abs(expectedWeight - entry.Weight) > .01f)
                     throw new System.InvalidOperationException($"{spot.DisplayName} has an unexpected species or weight: {entry.FishId} = {entry.Weight}.");
                 totalWeight += Mathf.Max(0f, entry.Weight);
+                pooledIds.Add(entry.FishId);
             }
             if (Mathf.Abs(totalWeight - 100f) > .01f)
                 throw new System.InvalidOperationException($"{spot.DisplayName} weights total {totalWeight}, expected 100.");
 
-            for (int sample = 0; sample < 1000; sample++)
+            float expectedValue = 0f;
+            foreach (FishPoolEntry entry in spot.FishPool)
+                expectedValue += fishById[entry.FishId].SalePrice * entry.Weight / totalWeight;
+            if (Mathf.Abs(expectedValue - expectedValues[spotIndex]) > .1f)
+                throw new System.InvalidOperationException($"{spot.DisplayName} expected sale value is {expectedValue:F1}G, expected {expectedValues[spotIndex]:F1}G.");
+
+            var sampleCounts = new System.Collections.Generic.Dictionary<string, int>();
+            Random.State previousRandomState = Random.state;
+            Random.InitState(20261121 + spotIndex);
+            for (int sample = 0; sample < 3000; sample++)
             {
                 FishDefinition selected = spot.SelectFish(catalog);
                 if (selected == null || spot.GetFishWeight(selected.Id) <= 0f)
                     throw new System.InvalidOperationException($"{spot.DisplayName} selected a fish outside its configured pool.");
+                sampleCounts[selected.Id] = sampleCounts.TryGetValue(selected.Id, out int count) ? count + 1 : 1;
             }
+            Random.state = previousRandomState;
+            if (sampleCounts.Count != spot.FishPool.Count)
+                throw new System.InvalidOperationException($"{spot.DisplayName} selection sample did not reach every configured species.");
+            Debug.Log($"FISHING_SPOT_SAMPLE: {spot.DisplayName}, 3000 catches, expected value {expectedValue:F1}G, species {sampleCounts.Count}.");
         }
+
+        if (pooledIds.Count != catalog.Count)
+            throw new System.InvalidOperationException($"Only {pooledIds.Count} of {catalog.Count} fish appear in a fishing spot.");
 
         Scene scene = SceneManager.GetActiveScene();
         PixelMapBuilder builder = Object.FindFirstObjectByType<PixelMapBuilder>();
@@ -516,7 +579,7 @@ public static class FishingPreviewTools
                 throw new System.InvalidOperationException("Fishing scene preview must contain all three lakes.");
         }
 
-        Debug.Log("MAP_VALIDATION_OK: 20 fish, 3 playable spots, exact 100-weight pools, difficulty progression, and selection samples verified.");
+        Debug.Log("MAP_VALIDATION_OK: 30 fish, 3 playable spots, exact 100-weight pools, economy targets, full species coverage, and 3000 selection samples per spot verified.");
     }
 
     private static FishingMapConfig EnsureMapConfig()
@@ -660,6 +723,16 @@ public static class FishingPreviewTools
         changed |= SetFishArt(config, "sturgeon", "Assets/Art/Fish/Fish18.png");
         changed |= SetFishArt(config, "moonlight_carp", "Assets/Art/Fish/Fish19.png");
         changed |= SetFishArt(config, "legendary_golden_carp", "Assets/Art/Fish/Fish20.png");
+        changed |= SetFishArt(config, "fish_21", "Assets/Art/Fish/Fish21.png");
+        changed |= SetFishArt(config, "fish_22", "Assets/Art/Fish/Fish22.png");
+        changed |= SetFishArt(config, "fish_23", "Assets/Art/Fish/Fish23.png");
+        changed |= SetFishArt(config, "fish_24", "Assets/Art/Fish/Fish24.png");
+        changed |= SetFishArt(config, "fish_25", "Assets/Art/Fish/Fish25.png");
+        changed |= SetFishArt(config, "fish_26", "Assets/Art/Fish/Fish26.png");
+        changed |= SetFishArt(config, "fish_27", "Assets/Art/Fish/Fish27.png");
+        changed |= SetFishArt(config, "fish_28", "Assets/Art/Fish/Fish28.png");
+        changed |= SetFishArt(config, "fish_29", "Assets/Art/Fish/Fish29.png");
+        changed |= SetFishArt(config, "fish_30", "Assets/Art/Fish/Fish30.png");
         changed |= SetRodArt(config, "basic_rod", "Assets/Art/Fishing rod/fishing rod1.png");
         changed |= SetRodArt(config, "sturdy_rod", "Assets/Art/Fishing rod/fishing rod2.png");
         changed |= SetRodArt(config, "river_rod", "Assets/Art/Fishing rod/fishing rod3.png");
